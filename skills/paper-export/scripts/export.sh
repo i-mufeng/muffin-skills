@@ -592,7 +592,8 @@ build_docx() {
   if [[ -n "$PY" && -f "$SCRIPTS/docx-postprocess.py" ]]; then
     "$PY" "$SCRIPTS/docx-postprocess.py" "$OUT/$NAME.docx" \
       --style "$docx_style" --title "$TITLE" --toc "$TOC" \
-      --table-rule "$TABLE_RULE" --footer-total "$FOOTER_TOTAL"
+      --table-rule "$TABLE_RULE" --footer-total "$FOOTER_TOTAL" \
+      --head-level "$HEAD_LEVEL"
   fi
   echo "✓ Word → $OUT/$NAME.docx  ($(du -h "$OUT/$NAME.docx" | cut -f1))"
 }

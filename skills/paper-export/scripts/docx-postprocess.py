@@ -625,6 +625,8 @@ def patch_header_level(raw: bytes, level: int) -> bytes:
     反过来给 "标题 2" 又轮到 LibreOffice 解析不到。数字形式 `STYLEREF 2`
     指的是内置标题级别，与界面语言无关，是实测下来唯一两侧都正确的写法。
     """
+    if level <= 0:
+        return strip_styleref_field(raw)
     s = raw.decode("utf-8")
     # 历史母版里的样式名形式（可能被 XML 转义过），一并归一成数字形式
     s = re.sub(r'STYLEREF\s+(?:&quot;|")\s*Heading\s*\d+\s*(?:&quot;|")',
@@ -633,16 +635,75 @@ def patch_header_level(raw: bytes, level: int) -> bytes:
     return s.encode("utf-8")
 
 
-def detect_head_level(body, style: str) -> int:
-    """与 export.sh 的 HEAD_LEVEL 推断保持一致：
-    report/modern 预设下正文里 H1 少于 2 个时（H1 就是文档名），页眉改取 H2。"""
-    if style not in ("report", "modern"):
-        return 1
-    n = 0
+def strip_styleref_field(raw: bytes) -> bytes:
+    """删掉页眉里整个 STYLEREF 域（fldChar begin … end 之间的全部 run）。
+
+    文档里根本没有目标级别的标题时（最常见的写法就会这样：title 写在
+    frontmatter，正文只有一个 H1、没有 H2），STYLEREF 会在**每一页**印出
+    可见错误 —— LibreOffice 渲染成「Error: Reference source not found」，
+    Word 是「错误！文档中没有指定样式的文字。」，直接出现在交付件上。
+    宁可页眉右侧留空。
+
+    只删这一个域，前面的 \tab 保留，左侧文档标题不受影响。
+    """
+    root = ET.fromstring(raw)
+    dropped = []
+    for p in root.iter(w("p")):
+        buf, in_field, is_target = [], False, False
+        for el in list(p):
+            if el.tag != w("r"):
+                continue
+            fld = el.find(w("fldChar"))
+            typ = fld.get(w("fldCharType")) if fld is not None else None
+            if typ == "begin":
+                in_field, is_target, buf = True, False, [el]
+                continue
+            if not in_field:
+                continue
+            buf.append(el)
+            it = el.find(w("instrText"))
+            if it is not None and it.text and "STYLEREF" in it.text:
+                is_target = True
+            if typ == "end":
+                if is_target:
+                    dropped.append((p, list(buf)))
+                in_field, buf = False, []
+    for parent, els in dropped:
+        for el in els:
+            parent.remove(el)
+    return ET.tostring(root, encoding="UTF-8", xml_declaration=True)
+
+
+def head_levels_present(body) -> set:
+    """body 里实际出现过的标题级别。"""
+    out = set()
     for p in body.iter(w("p")):
-        if find_pstyle(p) == "Heading1":
-            n += 1
-    return 1 if n >= 2 else 2
+        m = re.fullmatch(r"Heading([1-9])", find_pstyle(p) or "")
+        if m:
+            out.add(int(m.group(1)))
+    return out
+
+
+def resolve_head_level(body, style: str, want) -> int:
+    r"""页眉 STYLEREF 取哪一级标题。0 表示不取（调用方会删掉整个域）。
+
+    **以 export.sh 传进来的 want 为准。** 两边各算一遍必然分叉：export.sh 数的
+    是源码里的 H1，而这里只能数 title-dedup 摘掉一个之后 body 里剩下的
+    Heading1。实测一个很常见的写法（两个 H1、首个与文档名同名）：export.sh
+    打印「页眉取第 1 级」、PDF 侧 \peheadlevel=1，而这里数出 1 个 Heading1
+    就返回 2 —— Word 页眉取 H2、PDF 取 H1，两份成品不一致，而 SKILL.md
+    宣称两侧一致。want 为 None 时才走旧的兜底推断。
+
+    最后一道校验不能省：目标级别在文档里不存在就返回 0。
+    """
+    if want is None:
+        if style in ("report", "modern"):
+            n = sum(1 for p in body.iter(w("p"))
+                    if find_pstyle(p) == "Heading1")
+            want = 1 if n >= 2 else 2
+        else:
+            want = 1
+    return want if want in head_levels_present(body) else 0
 
 
 HF_NS = (f'xmlns:w="{W}" xmlns:r="{R}"')
@@ -832,7 +893,7 @@ def fix_core_props(raw: bytes, title: str) -> bytes:
 
 
 def process(path: Path, style: str, title: str, want_toc: bool,
-            table_rule: str, footer_total: bool):
+            table_rule: str, footer_total: bool, head_level=None):
     if not path.exists():
         raise Fail(f"找不到文件: {path}")
     if style not in PAGE_MARGIN:
@@ -880,7 +941,7 @@ def process(path: Path, style: str, title: str, want_toc: bool,
 
     # 页眉标题 + STYLEREF 取的标题级别
     short = truncate(title, 30)
-    head_level = detect_head_level(body, style)
+    head_level = resolve_head_level(body, style, head_level)
     if not brief:
         for hdr in ("word/header1.xml", "word/header2.xml"):
             if hdr in items:
@@ -946,7 +1007,7 @@ def process(path: Path, style: str, title: str, want_toc: bool,
           f"    前置节: {'已生成' if report['front'] else '无（未启用目录）'}"
           f"    目录标题: {'已改为「目　录」' if report['toc_title'] else '未找到'}")
     print(f"    正文节: 页码 decimal 从 1 重排；页眉标题「{report['title']}」"
-          f"，右侧取 H{report['head_level']}"
+          f"，右侧{('取 H%d' % report['head_level']) if report['head_level'] else '不取标题（文档中无对应级别，已移除 STYLEREF 域）'}"
           f"    表格: {report['tables']} 个已三线表化"
           f"（其中 {report['dense_tables']} 个内容较长，已加行间浅灰细线）"
           f"    代码高亮去色: {report['tok']} 个样式"
@@ -969,10 +1030,14 @@ def main():
     ap.add_argument("--table-rule", default="auto",
                     choices=["auto", "three", "grid"],
                     help="表格线型：auto=内容长的表加行间线（默认）")
+    ap.add_argument("--head-level", default=None, type=int,
+                    help="页眉右侧取第几级标题（由 export.sh 传入，"
+                         "省略则自行推断 —— 两边各算一遍会分叉）")
     a = ap.parse_args()
     try:
         process(Path(a.docx).resolve(), a.style, a.title,
-                a.toc == "1", a.table_rule, a.footer_total == "1")
+                a.toc == "1", a.table_rule, a.footer_total == "1",
+                head_level=a.head_level)
     except Fail as e:
         print(f"✗ docx 修补失败: {e}", file=sys.stderr)
         sys.exit(1)
