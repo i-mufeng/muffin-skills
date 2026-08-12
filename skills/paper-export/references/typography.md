@@ -73,6 +73,15 @@ gb 预设：章 三号黑体居中、节 四号黑体、条/款 小四黑体，�
 - 列宽按「CJK=2 / 西文=1」估算，不是真实字体度量，比例可靠、绝对值有偏差。
   这份显示宽度表在 `assets/tablefit.lua` 与 `scripts/md-lint.py` 里各有一份，
   **必须保持一致** —— 不一致会导致 lint 说没超宽而实际排出来溢出。
+  已按 `cp ∈ [0, 0x40000]` 逐码位比对确认零差异；改一处务必同步改另一处。
+- **带合并单元格（`row_span` / `col_span`）的行不加行间分界线。** `\noalign`
+  只在「刚结束一行」的位置合法：跨行单元格会让本行第一个格落到第 2 列（前面
+  多个 `&`），跨列单元格会被 pandoc 包进 `\multicolumn{n}{...}{...}` —— 两种
+  情况插进去 XeTeX 都报 `! Misplaced \noalign` 并中止，**PDF 一页都出不来**。
+  所以这些行一律跳过，宁可少一条辅助线。
+- 量宽时会把 `sanitize.lua` 在 LaTeX 侧生成的 `RawInline('tex', '\texttt{…}')`
+  还原成文字。`pandoc.utils.stringify(RawInline)` 返回**空串**，不还原的话含
+  行内代码的单元格算作 0 宽，PDF 列宽与 Word 完全分叉。
 
 ## 5. 列表
 
