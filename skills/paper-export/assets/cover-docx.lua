@@ -78,7 +78,20 @@ end
 local function meta_str(meta, key)
   local v = meta[key]
   if v == nil then return nil end
-  local s = pandoc.utils.stringify(v)
+  local s
+  -- author 写成 YAML 列表（author:\n  - 张三\n  - 李四）时，直接 stringify
+  -- MetaList 会把各项**不加分隔符**拼起来 —— 封面印出「张三李四」。
+  if v.t == 'MetaList' then
+    local parts = {}
+    for _, item in ipairs(v) do
+      local one = pandoc.utils.stringify(item)
+      one = one:gsub('^%s+', ''):gsub('%s+$', '')
+      if one ~= '' then parts[#parts + 1] = one end
+    end
+    s = table.concat(parts, '、')
+  else
+    s = pandoc.utils.stringify(v)
+  end
   s = s:gsub('^%s+', ''):gsub('%s+$', '')
   if s == '' then return nil end
   return s

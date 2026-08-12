@@ -265,15 +265,41 @@ except OSError:
     text = ''
 vals = {}
 m = re.match(r'^---\r?\n(.*?)\r?\n(?:---|\.\.\.)\r?\n', text, re.S)
+
+
+def unquote(v):
+    v = v.strip()
+    if len(v) >= 2 and v[0] == v[-1] and v[0] in '"\'':
+        v = v[1:-1]
+    return v
+
+
 if m:
+    cur = None            # 上一个 `key:`（值为空，可能跟着 YAML 列表）
+    items = []
     for line in m.group(1).split('\n'):
+        # 缩进的 `- xxx` 是上一个 key 的列表项。原先只认单行 key: value，
+        # author 写成列表时读不出来，PDF 封面的「编制人」整行缺失，而 Word
+        # 侧走 lua 的 stringify 又把各项拼成「张三李四」—— 两侧都不对。
+        lm = re.match(r'^\s+-\s+(.*)$', line)
+        if lm and cur:
+            one = unquote(lm.group(1))
+            if one:
+                items.append(one)
+            continue
+        if cur and items:
+            vals[cur] = '、'.join(items)
+        cur, items = None, []
         km = re.match(r'^([A-Za-z_][\w-]*)\s*:\s*(.*)$', line)
         if not km:
             continue
-        k, v = km.group(1), km.group(2).strip()
-        if len(v) >= 2 and v[0] == v[-1] and v[0] in '"\'':
-            v = v[1:-1]
+        k, v = km.group(1), unquote(km.group(2))
+        if v == '':
+            cur = k       # 可能是列表的开头，等下面的 `- xxx`
+            continue
         vals[k] = v
+    if cur and items:
+        vals[cur] = '、'.join(items)
 print('\n'.join('FM_%s=%s' % (k.upper().replace('-', '_'), shlex.quote(vals.get(k, '')))
                  for k in KEYS))
 PYEOF

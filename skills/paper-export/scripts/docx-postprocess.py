@@ -870,8 +870,55 @@ def _apply_marker_style(run, fg: str, bg: str):
     reorder(rpr, RPR_ORDER)
 
 
+# semantic-markers.lua 在 docx 侧给标签 Span 套的 custom-style 名
+MARKER_STYLES = {
+    "PEMarkConfirm": SEMANTIC_MARKERS["【待确认】"],
+    "PEMarkSupplement": SEMANTIC_MARKERS["【需补充】"],
+    "PEMarkSuggestion": SEMANTIC_MARKERS["【建议方案】"],
+    "PEMarkAdversarial": SEMANTIC_MARKERS["【对抗意见】"],
+    "PEMarkDefer": SEMANTIC_MARKERS["【建议暂缓】"],
+    "PEMarkReject": SEMANTIC_MARKERS["【建议剔除】"],
+}
+
+
 def style_semantic_markers(root) -> int:
-    """只给固定评审标签着色；标签与正文同 run 时先安全拆分。"""
+    """给评审标签着色。
+
+    判据是 semantic-markers.lua 套上的 custom-style（pandoc 写成
+    <w:rStyle w:val="PEMark…"/>），**不是标签文字**。
+
+    原先按纯文字正则匹配，于是正文里当普通词语用的「【待确认】」在 Word 里
+    被着色、而 PDF 侧只认带类的 Span 不着色 —— 两侧不一致。现在两侧都只认
+    「带 .mark-* 类的 Span」这一个判据。
+
+    着色后移除 rStyle：那个样式名在母版里没有定义，留着会让 Word 在样式
+    面板里列出一个空样式。
+    """
+    count = 0
+    for run in root.iter(w("r")):
+        rpr = run.find(w("rPr"))
+        if rpr is None:
+            continue
+        rstyle = rpr.find(w("rStyle"))
+        if rstyle is None:
+            continue
+        spec = MARKER_STYLES.get(rstyle.get(w("val"), ""))
+        if spec is None:
+            continue
+        fg, bg = spec
+        rpr.remove(rstyle)
+        _apply_marker_style(run, fg, bg)
+        count += 1
+    return count
+
+
+def style_semantic_markers_by_text(root) -> int:
+    """按纯文字着色的旧实现。
+
+    保留它只为一种情况：文档是用旧版 skill 生成的 docx，或有人绕过
+    semantic-markers.lua 直接跑本脚本。默认**不调用** —— 它无法区分带类的
+    Span 和正文里的同名词语，这正是两侧不一致的根源。
+    """
     count = 0
     marker_re = re.compile("(" + "|".join(
         re.escape(s) for s in SEMANTIC_MARKERS) + ")")

@@ -106,13 +106,27 @@ function Pandoc(doc)
 
   local out = pandoc.List({})
   if front_break then out:insert(pagebreak()) end
-  local body_start = #out                -- 正文内容的起点
+
+  -- 到目前为止有没有排出过「实质内容」。
+  --
+  -- 原先的守卫是 #out > body_start，只判断「是不是物理上的第一个 block」。
+  -- 当 title-dedup 没命中（--title 与正文 H1 的文字不同，很常见）而分页级别
+  -- 又是 2 时，H1 后面**紧跟**的第一个 H2 会被插上分页 —— H1 独占一整页，
+  -- 整页只有一行标题。front-break 为真时更糟：\clearpage → H1 → \clearpage。
+  --
+  -- 比分页级别更高的标题（level=2 时的 H1）不算实质内容，它后面紧跟的第一个
+  -- 同级标题不分页；一旦出现正文、表格、列表或同级标题，后面的同级标题就
+  -- 照常分页 —— 「一级标题之间必然换页」的约定不变。
+  local seen_body = false
 
   for _, b in ipairs(doc.blocks) do
     if level > 0 and b.t == 'Header' and b.level == level then
-      -- 已经在正文起始处的那个标题不插：front-break 已经翻过页了，
-      -- 再插一次会多出一整张空白页。
-      if #out > body_start then out:insert(pagebreak()) end
+      if seen_body then out:insert(pagebreak()) end
+      seen_body = true
+    elseif b.t == 'Header' and b.level < level then
+      -- 更高级别的标题：不改变 seen_body
+    else
+      seen_body = true
     end
     out:insert(b)
   end
