@@ -51,13 +51,8 @@ scripts/export.sh ./docs/交付文档 --name 交付文档 --title "系统交付�
 | 页眉页脚 | 有 | 有 | 有 | 有 | 无 |
 | 分页 | 一级标题前换页 | **不主动分页** | 一级标题前换页 | 每章换页 | 不主动分页 |
 
-**modern 与 report 只差字体**：版面、标题层级、页眉页脚、目录全部复用
-`preamble-report.tex` 与 `reference-report` 那一套逻辑，`preamble-modern.tex`
-只在其后覆盖字体族。改版面改 report 即可，两套同步生效。
-
-**为什么 modern/report 要偏移一档**：技术文档里 H1 通常是文档名（会被摘到封面），
-作者写的「## 一、概述」才是规范意义上的一级标题。brief 沿用同一套偏移，
-gb 预设不做这个偏移。
+modern 与 report 只差字体，标题层级刻意偏移一档（H1 归封面、H2 才是规范
+意义上的一级标题）。这两件事的来由与实现见 `references/typography.md`。
 
 ### brief 预设（简报 / 通报）
 
@@ -89,128 +84,13 @@ gb 预设不做这个偏移。
 
 ---
 
-# 排版规范
+# 写 Markdown 时必须遵守的约定
 
-以下是本 skill 产出文档所遵循的规范，也是**写 Markdown 时应当遵守的约定**。
+这些是**写文档时就要照着做**的，不照做导出会出问题。产出成品的排版规范
+（版面、字号、颜色、封面、页眉页脚、分页、字体）见
+`references/typography.md` —— 那些是核对成品或改版式时才需要翻的。
 
-## 1. 版面
-
-A4，上下边距 2.54cm，右边距 2.54cm，左边距 3.0cm（gb 为 3.17cm，留装订线）。
-页眉距边界 1.5cm，页脚距边界约 1.75cm。
-
-## 2. 字号与字体（report 预设）
-
-| 元素 | 字号 | 字体 |
-|---|---|---|
-| 封面主标题 | 一号 26pt | 黑体 |
-| 封面副标题 | 三号 16pt | 黑体 |
-| 封面信息栏 | 小三 15pt | 楷体 |
-| 目录标题「目　录」/ H1 | 三号 16pt 居中 | 黑体 |
-| H2（规范一级标题） | 小三 15pt | 黑体 |
-| H3 | 13pt | 黑体 |
-| H4 | 小四 12pt | 黑体 |
-| H5 | 小四 12pt 加粗 | 宋体 |
-| 正文 | 小四 12pt，行距 1.5，首行缩进 2 字符 | 宋体 |
-| 表格 / 题注 | 五号 10.5pt，行距 1.0 | 宋体（表头黑体加粗） |
-| 页眉页脚 | 小五 9pt | 宋体 |
-
-gb 预设：章 三号黑体居中、节 四号黑体、条/款 小四黑体，正文同上。
-
-字号刻意逐级拉开。ctex 在 macOS 上默认把 `\heiti` 落到 STXihei（华文细黑），
-笔画细、字面小，会让三号标题看起来比正文还弱 —— 已显式改绑 `Heiti SC Medium`。
-
-## 3. 颜色
-
-**一切文字纯黑**：标题、正文、目录（含条目与页码）、页眉页脚、题注、表格、
-代码、列表符号。超链接默认也是黑色（打印友好），`--links color` 才转深蓝。
-代码块默认单色高亮，`--code-color` 才启用彩色。
-
-允许的非黑仅三处：代码块底色 `F7F7F8`、引用块左侧竖条 `BFBFBF`、
-表格行间分界线 `D0D0D0`。图片本身不受限。需求评审稿还允许使用下述固定的
-语义标签；只有标签本身着色，后续正文保持黑色：
-
-| 语义标签 | Markdown 写法 | 字体色 | 背景色 |
-|---|---|---|---|
-| 待确认 | `[【待确认】]{.mark-confirm}` | 深红 `C00000` | 浅红 `FCE8E6` |
-| 需补充 | `[【需补充】]{.mark-supplement}` | 深红 `C00000` | 浅红 `FCE8E6` |
-| 建议方案 | `[【建议方案】]{.mark-suggestion}` | 深蓝 `1F4E78` | 浅蓝 `DDEBF7` |
-| 对抗意见 | `[【对抗意见】]{.mark-adversarial}` | 深红 `C00000` | 浅红 `FCE8E6` |
-| 建议暂缓 | `[【建议暂缓】]{.mark-defer}` | 深红 `C00000` | 浅红 `FCE8E6` |
-| 建议剔除 | `[【建议剔除】]{.mark-reject}` | 深红 `C00000` | 浅红 `FCE8E6` |
-
-语义标签的文字和类名必须成对使用，不要把整句话放进 Span。例如：
-
-```markdown
-[【待确认】]{.mark-confirm} 项目暂停超过多少天后升级提醒。
-[【需补充】]{.mark-supplement} 请提供现行审批表单和制度文件。
-[【建议方案】]{.mark-suggestion} 采用“发起、处理、复核、解除”的风险闭环。
-[【对抗意见】]{.mark-adversarial} 当前指标口径不足，不能直接用于对外展示。
-[【建议暂缓】]{.mark-defer} 待数据基础和投入产出验证后再纳入建设。
-[【建议剔除】]{.mark-reject} 当前阶段不建议进入对外展示。
-```
-
-## 4. 表格规范
-
-### 视觉
-- **三线表**：顶线/底线 0.9pt 纯黑，表头下线 0.4pt 纯黑，**无竖线**。
-- **行间分界线按内容密度自动加**（`--table-rule auto`，默认）：
-  任一单元格会折行 → 行间加 0.3pt `D0D0D0` 浅灰细线；全是短词 → 保持纯三线表。
-  分界线刻意比结构线细得多、浅得多，否则整张表退化成网格反而更吵。
-  `--table-rule three` 强制纯三线表，`grid` 强制全部加线。
-- 表格水平居中，宽度撑满版心；表头黑体加粗居中；跨页自动重复表头。
-- **列宽按内容重算**，不用 Markdown 分隔行的长度（那会把长文本列挤成四行、
-  短列留一大片白）。纯数字列右对齐，最宽不超过 8 个显示宽度的窄列居中。
-
-### 内容（写 Markdown 时必须遵守）
-- **单元格不得放大段文字。** 上限 40 个显示宽度单位（≈20 汉字）为宜，
-  **超过 80（≈40 汉字）`md-lint` 会报 error**。超了就改成正文段落、
-  列表，或把这一列拆成两列。
-  > 表格是用来做「横向对比」的，不是用来装叙述的。一段话塞进单元格，
-  > 既读不了也排不好 —— 列宽算法只能保证它不吃掉别的列，救不了它自己。
-- 列数不超过 6。超了拆表，或改写成「字段说明列表」。
-- 单元格内不放多个段落、不放代码块、不放列表。
-- 不要用表格做两栏排版。
-- 表格应有表题：`: 端口清单 {#tbl:ports}`，正文用 `@tbl:ports` 引用。
-
-## 5. 列表
-
-无序 `•` / `–` / `·`，有序 `1.` / `(1)` / `①`。左缩进与正文首行对齐，
-项间紧凑，列表内不再首行缩进。三级以上建议改用带小标题的段落。
-
-## 6. 页眉页脚与页码分节
-
-文档分三节，页码独立：
-
-| 节 | 页眉 | 页脚 | 页码 |
-|---|---|---|---|
-| 封面 | 无 | 无 | 不计数、不显示 |
-| 前置（目录） | 横线 + 文档标题**居中** | 居中 | 大写罗马 I、II |
-| 正文 | 横线 + 左文档标题 + 右当前一级标题 | 居中 | 阿拉伯，**从 1 重新开始** |
-
-`--footer-total` 可把页脚换成「第 N 页 共 M 页」。PDF 与 Word 两侧一致。
-
-## 7. 封面
-
-从上到下：顶部留白（≥15% 页高，主标题绝不贴顶）→ 单位名 → 主标题（一号黑体）
-→ 副标题 → 分隔线 → 信息栏（文档编号/版本号/密级/编制人，标签两端对齐并相对中线略向左）
-→ 弹性留白 → **日期（页面下部约 85% 处）** → 底部留白。
-
-未提供的字段整行省略，不留空行。封面标题默认取第一个 H1，此时正文里那个 H1
-会被自动摘掉，避免封面、正文、目录三处重复。
-
-## 8. 分页
-
-- 封面独占一页，目录独占。
-- **长文档的一级标题之间必然换页**。`--break-level auto`（默认）会自己判断：
-  正文里 H1 有两个以上 → 按 H1 分页；只有一个 H1（被当作文档名摘到封面了）
-  → **按 H2 分页**。`--break-level 0` 关闭，`1|2|3` 指定级别。
-- 标题后至少留 4 行正文，杜绝标题孤零零挂在页面末行；标题紧跟表格时，
-  标题与表头保证同页。
-- 段落孤行寡行全部抑制；表格跨页重复表头。
-
----
-
-## 写 Markdown 时的约定
+## 空行
 
 **标题、表格、列表、代码围栏前后都要留空行。** 这不是洁癖：
 
@@ -223,8 +103,58 @@ gb 预设：章 三号黑体居中、节 四号黑体、条/款 小四黑体，�
 改变导出结果的问题），警告折叠成计数；`md-lint.py 文件 --verbose` 看全部，
 `--strict-lint` 让 error 直接中止导出。
 
-**元数据**：可选。写在 YAML frontmatter 里，也可以完全不写 ——
-命令行参数优先级更高。字段说明见 `references/frontmatter.md`。
+## 表格
+
+**内容上的硬约束：**
+
+- **单元格不得放大段文字。** 上限 40 个显示宽度单位（≈20 汉字）为宜，
+  **超过 80（≈40 汉字）`md-lint` 会报 error**。超了就改成正文段落、
+  列表，或把这一列拆成两列。
+  > 表格是用来做「横向对比」的，不是用来装叙述的。一段话塞进单元格，
+  > 既读不了也排不好 —— 列宽算法只能保证它不吃掉别的列，救不了它自己。
+- 列数不超过 6。超了拆表，或改写成「字段说明列表」。
+- 单元格内不放多个段落、不放代码块、不放列表。
+- 不要用表格做两栏排版。
+- 表格应有表题：`: 端口清单 {#tbl:ports}`，正文用 `@tbl:ports` 引用。
+
+产出的是三线表，列宽按内容重算（不看 Markdown 分隔行的长度），内容密的表
+自动加行间浅灰细线。`--table-rule` / `--table-head-fill` / `--no-table-fit`
+可以覆盖，细节见 `references/typography.md`。
+
+## 列表
+
+无序 `•` / `–` / `·`，有序 `1.` / `(1)` / `①`。**三级以上建议改用带小标题的
+段落** —— 再深就没人读得下去了。
+
+## 语义标签（需求评审稿）
+
+全文文字纯黑，唯一的例外是下面这套固定标签。只有标签本身着色，后续正文
+保持黑色：
+
+| 语义标签 | Markdown 写法 | 字体色 | 背景色 |
+|---|---|---|---|
+| 待确认 | `[【待确认】]{.mark-confirm}` | 深红 `C00000` | 浅红 `FCE8E6` |
+| 需补充 | `[【需补充】]{.mark-supplement}` | 深红 `C00000` | 浅红 `FCE8E6` |
+| 建议方案 | `[【建议方案】]{.mark-suggestion}` | 深蓝 `1F4E78` | 浅蓝 `DDEBF7` |
+| 对抗意见 | `[【对抗意见】]{.mark-adversarial}` | 深红 `C00000` | 浅红 `FCE8E6` |
+| 建议暂缓 | `[【建议暂缓】]{.mark-defer}` | 深红 `C00000` | 浅红 `FCE8E6` |
+| 建议剔除 | `[【建议剔除】]{.mark-reject}` | 深红 `C00000` | 浅红 `FCE8E6` |
+
+**文字和类名必须成对使用，不要把整句话放进 Span。** 例如：
+
+```markdown
+[【待确认】]{.mark-confirm} 项目暂停超过多少天后升级提醒。
+[【需补充】]{.mark-supplement} 请提供现行审批表单和制度文件。
+[【建议方案】]{.mark-suggestion} 采用“发起、处理、复核、解除”的风险闭环。
+[【对抗意见】]{.mark-adversarial} 当前指标口径不足，不能直接用于对外展示。
+[【建议暂缓】]{.mark-defer} 待数据基础和投入产出验证后再纳入建设。
+[【建议剔除】]{.mark-reject} 当前阶段不建议进入对外展示。
+```
+
+## 元数据
+
+可选。写在 YAML frontmatter 里，也可以完全不写 —— 命令行参数优先级更高。
+字段说明见 `references/frontmatter.md`。
 
 ```yaml
 ---
@@ -238,7 +168,9 @@ date: 2026-08-04
 ---
 ```
 
-**图表与交叉引用**（需要 pandoc-crossref）：
+## 图表与交叉引用
+
+需要 pandoc-crossref：
 
 ```markdown
 ![火线识别流程](img/flow.png){#fig:flow}
@@ -290,10 +222,14 @@ rsvg-convert --keep-aspect-ratio --width 2400 \
 - 先检查 SVG 原图和转换后的 PNG，再分别检查 PDF 页面以及 Word 渲染页面；确认无文字
   溢出、遮挡、裁剪、缺字、比例失真和模糊后才交付。
 
-**参考文献**：`--bib refs.bib`，正文里 `[@zhang2024]`。PDF 与 Word 共用
+## 参考文献
+
+`--bib refs.bib`，正文里 `[@zhang2024]`。PDF 与 Word 共用
 citeproc，两侧样式完全一致；gb 预设自动套 GB/T 7714 —— 前提是
 `assets/gb-t-7714-2015-numeric.csl` 在位（不随 skill 分发，`scripts/doctor.sh
 --install` 补装）。缺了会退回 pandoc 默认样式，导出时会明确提示，不静默降级。
+
+---
 
 ## 常用选项
 
@@ -326,36 +262,12 @@ citeproc，两侧样式完全一致；gb 预设自动套 GB/T 7714 —— 前提
 
 ## 字体
 
-| 用途 | 字体 | 来源 |
-|---|---|---|
-| modern 正文 / 标题 / 四级标题 | 阿里巴巴普惠体 3.0 的 55 / 85 / 65 | 免费商用，需手动装 |
-| report、gb 正文 | Songti SC | macOS 自带 |
-| report、gb 标题 | Heiti SC Medium | macOS 自带 |
-| brief 正文 | Noto Serif CJK SC Regular（回退普惠体/仿宋） | 免费商用，独立 OTF 可嵌入 PDF |
-| brief 文头大标题 | Noto Serif CJK SC Black | `brew install --cask font-noto-serif-cjk-sc` |
-| 代码块 / ASCII 框图 | Maple Mono CN | 免费开源，需手动装 |
+modern 用阿里巴巴普惠体，report/gb 用 macOS 自带的宋体 + Heiti SC Medium，
+brief 用思源宋体，代码块用 Maple Mono CN。手动装的那几个缺失时都有回退
+（观感降一档，不会编译失败），`scripts/doctor.sh` 会逐个列出在位情况。
 
-普通文本里的英文与数字跟随当前中文字体，不再单独切换 Arial 或 Times New Roman；
-标题、封面信息栏和正文会分别使用各自中文字体自带的西文字形。代码块为了保持
-中英文 2:1 等宽对齐，仍独立使用 Maple Mono CN。
-
-手动装的那几个：把 `.otf`/`.ttf` 拷进 `~/Library/Fonts/`，再 `fc-cache -f`。
-全部缺失时都有回退（普惠体→宋体、思源宋体→宋体伪粗、Maple→Menlo+宋体），
-只是观感降一档，不会编译失败。`scripts/doctor.sh` 会逐个列出在位情况。
-
-**在 preamble 里写字体名有两个坑**，都表现为「编译不报错但排出豆腐块」：
-
-1. **多字重字体必须用 PostScript 名**。`AlibabaPuHuiTi_3_55_Regular` 可以，
-   fontconfig 显示的家族名 `Alibaba PuHuiTi 3.0 55 Regular` 不行 ——
-   tectonic 的字体索引按家族名查不到，会报 font cannot be found。
-2. **字体集合（.ttc）里的非首 face 取不到**。macOS 的 Songti SC 确实带
-   Black 字重，但它藏在 `Songti.ttc` 里，三种写法（family+BoldFont、全名、
-   PostScript 名）实测全部落空 —— 这就是 brief 文头改用思源宋体的原因。
-   对比 `Heiti SC Medium` 能用，因为它是独立的 `.ttf`。
-
-Word 侧相反：`rFonts` 要写 **name ID 1**，也就是带字重后缀的
-`Alibaba PuHuiTi 3.0 85 Bold`；只写 `Alibaba PuHuiTi 3.0` 会落到 Regular，
-Bold 变成 Word 自己描边的伪粗。
+字体清单、安装方式，以及「在 preamble 里写字体名的两个坑」（多字重必须用
+PostScript 名、.ttc 里的非首 face 取不到）见 `references/typography.md`。
 
 ## 已知边界
 
@@ -379,35 +291,10 @@ Bold 变成 Word 自己描边的伪粗。
 4. Word 效果可用 `soffice --headless --convert-to pdf --outdir /tmp x.docx` 预览。
 5. 常见报错与机理见 `references/troubleshooting.md`。
 
-## 目录结构
+## 参考文件
 
-```
-assets/
-  preamble-common.tex    字体、符号兜底、表格、列表、代码块、分页质量
-  preamble-report.tex    技术报告版式：页面、标题层级、页眉页脚、目录
-  preamble-modern.tex    modern 的字体覆盖层（叠在 report 之上，版式不动）
-  preamble-modern-plain.tex modern-plain 的无封面行内标题层
-  preamble-gb.tex        学位论文版式
-  preamble-brief.tex     简报版式：公文版心、仿宋三号、无页眉页脚
-  titlepage.tex          封面（PDF 侧）
-  masthead-brief.tex     简报文头：标题 + 副标题 + 双分隔线（PDF 侧）
-  signoff-brief.tex      简报落款：单位 / 编制人 / 日期（PDF 侧）
-  before-body.tex        封面节 → 前置节的切换
-  sanitize.lua           Unicode 清洗 + 行内代码断行
-  semantic-markers.lua   待确认 / 需补充 / 建议方案语义标签（PDF 着色）
-  title-dedup.lua        正文里与封面重名的首个 H1 摘除
-  tablefit.lua           表格列宽重算 + 表头加粗 + 行间分界线
-  pagebreak.lua          按级别分页
-  cover-docx.lua         封面 / brief 文头与落款（Word 侧，直接写 OpenXML）
-  crossref-*.yaml        图表编号格式
-  reference-*.docx       Word 母版（由 scripts/build-reference-docx.py 生成）
-scripts/
-  export.sh              导出入口
-  doctor.sh              依赖与字体自检
-  md-lint.py             Markdown 体检
-  build-reference-docx.py 重新生成 Word 母版（改版式后需重跑）
-  docx-postprocess.py    Word 分节、页眉页脚、页码、表格线型、语义标签着色
-references/
-  frontmatter.md         元数据字段与优先级
-  troubleshooting.md     报错对照表与机理
-```
+| 文件 | 内容 |
+|---|---|
+| `references/frontmatter.md` | 元数据字段与优先级 |
+| `references/typography.md` | 排版规范实现细节、字体、各文件职责与注入顺序 |
+| `references/troubleshooting.md` | 报错对照表与机理 |
