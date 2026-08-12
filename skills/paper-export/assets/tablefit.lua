@@ -277,28 +277,61 @@ end
 -- 长文本表格不加分界线则相邻两行糊成一片。
 -- ---------------------------------------------------------------------------
 
+-- 遍历所有数据行，算出每个单元格的**真实起始列**。
+--
+-- 必须和 measure 用同一套占位网格：col_span 往右占位，row_span 往下占位。
+-- 不跟踪 row_span 的后果有两个，都实测复现过：
+--   needs_rules   拿错列的容量去比 —— 内容相同的两张表，只因第一列有没有
+--                 合并单元格，一张判密一张判疏。
+--   add_row_rules 把 \noalign 插到不在行首的单元格里 —— XeTeX 报
+--                 「! Misplaced \noalign」，**PDF 一页都出不来**。
+local function walk_body_rows(tbl, ncols, fn)
+  local pending = {}          -- [col] = 还要占用多少行（row_span 余量）
+  for _, tb in ipairs(tbl.bodies) do
+    for _, row in ipairs(tb.body) do
+      local carried = {}      -- 本行被上一行 row_span 占掉的列
+      for c = 1, ncols do
+        if (pending[c] or 0) > 0 then
+          pending[c] = pending[c] - 1
+          carried[c] = true
+        end
+      end
+
+      local infos = {}
+      local col = 1
+      for _, cell in ipairs(row.cells) do
+        while col <= ncols and carried[col] do col = col + 1 end
+        if col > ncols then break end
+        local span = math.max(1, cell.col_span or 1)
+        local rspan = math.max(1, cell.row_span or 1)
+        infos[#infos + 1] = { cell = cell, col = col, span = span }
+        for k = col, math.min(col + span - 1, ncols) do
+          if rspan > 1 then pending[k] = rspan - 1 end
+        end
+        col = col + span
+      end
+      fn(infos)
+    end
+  end
+end
+
 -- 该表是否需要行间线
 local function needs_rules(tbl, widths)
   if table_rule == 'three' then return false end
   if table_rule == 'grid' then return true end
   -- auto：任一数据单元格的显示宽度超过它那一列的单行容量，即判为「密」
   local ncols = #widths
-  for _, tb in ipairs(tbl.bodies) do
-    for _, row in ipairs(tb.body) do
-      local col = 1
-      for _, cell in ipairs(row.cells) do
-        if col > ncols then break end
-        local span = math.max(1, cell.col_span or 1)
-        local cap = 0
-        for k = col, math.min(col + span - 1, ncols) do
-          cap = cap + line_units * widths[k]
-        end
-        if text_width(cell_text(cell)) > cap then return true end
-        col = col + span
+  local dense = false
+  walk_body_rows(tbl, ncols, function(infos)
+    for _, it in ipairs(infos) do
+      local cap = 0
+      for k = it.col, math.min(it.col + it.span - 1, ncols) do
+        cap = cap + line_units * widths[k]
       end
+      if text_width(cell_text(it.cell)) > cap then dense = true end
     end
-  end
-  return false
+  end)
+  return dense
 end
 
 local function add_row_rules(tbl, widths, _)
@@ -306,23 +339,30 @@ local function add_row_rules(tbl, widths, _)
   if not FORMAT:match('latex') then return end
   if not needs_rules(tbl, widths) then return end
 
+  local ncols = #widths
   local first = true
-  for _, tb in ipairs(tbl.bodies) do
-    for _, row in ipairs(tb.body) do
-      if first then
-        first = false          -- 首个数据行上方已经有表头的 \midrule
-      else
-        local cell = row.cells[1]
-        local blk = cell and cell.contents[1]
-        -- 只在「第一个单元格恰好是单个 Plain/Para」时注入。多块单元格会被
-        -- pandoc 包进 \begin{minipage}，\noalign 落进 minipage 里就非法了。
-        if blk and #cell.contents == 1
-           and (blk.t == 'Plain' or blk.t == 'Para') then
-          table.insert(blk.content, 1, pandoc.RawInline('tex', ROW_RULE))
-        end
-      end
+  walk_body_rows(tbl, ncols, function(infos)
+    if first then
+      first = false            -- 首个数据行上方已经有表头的 \midrule
+      return
     end
-  end
+    -- \noalign 只在「刚结束一行」的位置合法。四种情况一律跳过该行的线，
+    -- 宁可少一条分界线，也不能让整个 PDF 编译不出来：
+    --   1. 本行第一个单元格不在第 1 列 —— 被上一行的 row_span 占了，
+    --      它前面有个 & ，\noalign 就不在行首了
+    --   2. 该单元格跨列 —— pandoc 包成 \multicolumn{n}{...}{...}，
+    --      \noalign 落进第三个参数里
+    --   3. 单元格不止一个块 —— 会被包进 \begin{minipage}
+    --   4. 那个块不是 Plain/Para —— 同样不是能塞 inline 的位置
+    local it = infos[1]
+    if not it or it.col ~= 1 or it.span > 1 then return end
+    local cell = it.cell
+    local blk = cell.contents[1]
+    if blk and #cell.contents == 1
+       and (blk.t == 'Plain' or blk.t == 'Para') then
+      table.insert(blk.content, 1, pandoc.RawInline('tex', ROW_RULE))
+    end
+  end)
 end
 
 -- ---------------------------------------------------------------------------
