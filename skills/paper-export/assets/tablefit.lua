@@ -149,6 +149,38 @@ end
 local BREAK_TO_NL = {
   LineBreak = function() return pandoc.Str('\n') end,
   SoftBreak = function() return pandoc.Str('\n') end,
+
+  -- sanitize.lua 早于本 filter 运行，且在 LaTeX 侧把每个 Code 换成了
+  -- RawInline('tex', '\\texttt{…}')。而 pandoc.utils.stringify(RawInline)
+  -- 返回**空串** —— 含行内代码的单元格被量成 0 宽，PDF 的列宽和 Word 完全
+  -- 分叉：实测同一张表的镜像名列 PDF 得 0.2647 且被误判为窄列而居中，
+  -- Word 得 0.4801 左对齐，代码在 PDF 里被折成三行。
+  --
+  -- 这里把 raw TeX 还原成可量宽的文字。semantic-markers.lua 产出的
+  -- RawInline 同样受益。
+  RawInline = function(el)
+    local fmt = el.format or ''
+    if not (fmt:match('tex') or fmt:match('latex')) then
+      return pandoc.Str('')
+    end
+    local s = el.text
+    -- 本 filter 自己插的行间线宏不参与量宽（正常时序下量宽在插入之前，
+    -- 这里只是兜底，免得将来调整顺序时静默把它算进列宽）
+    if s:match('^\\noalign') then return pandoc.Str('') end
+    s = s:gsub('\\penalty%-?%d+%s*', '')      -- 逐字符断行 penalty
+    s = s:gsub('\\discretionary%s*', '')
+    s = s:gsub('^%s*\\texttt%s*{', '')
+    s = s:gsub('}%s*$', '')
+    -- 还原 LATEX_ESC 造出来的转义宏
+    s = s:gsub('\\textbackslash%s*{}', '\\')
+    s = s:gsub('\\textasciitilde%s*{}', '~')
+    s = s:gsub('\\textasciicircum%s*{}', '^')
+    s = s:gsub('\\([%%%$&#_{}])', '%1')
+    -- 剩下的控制序列（如 \allowbreak）不占版面宽度，去掉
+    s = s:gsub('\\[%a@]+%s*', '')
+    s = s:gsub('[{}]', '')
+    return pandoc.Str(s)
+  end,
 }
 
 local function cell_text(cell)
