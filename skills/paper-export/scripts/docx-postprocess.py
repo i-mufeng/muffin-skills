@@ -460,8 +460,16 @@ def table_is_dense(tbl, line_units: int = LINE_UNITS) -> bool:
     total = sum(cols)
     ncols = len(cols) or 1
 
-    for ri, tr in enumerate(tbl.findall(w("tr"))):
-        if ri == 0:
+    rows_all = tbl.findall(w("tr"))
+    # 只有真表头才跳过。无表头的表里，第一行往往正是最长的一行，
+    # 无条件跳过会让 auto 线型判据失准。
+    skip = -1
+    if rows_all:
+        _t0 = rows_all[0].find(w("trPr"))
+        if _t0 is not None and _t0.find(w("tblHeader")) is not None:
+            skip = 0
+    for ri, tr in enumerate(rows_all):
+        if ri == skip:
             continue                      # 表头不参与判定
         ci = 0
         for tc in tr.findall(w("tc")):
@@ -522,8 +530,19 @@ def style_table(tbl, rule: str = "auto", style: str = "report"):
     reorder(tblpr, TBLPR_ORDER)
 
     rows = tbl.findall(w("tr"))
+    # 表头判定读 pandoc 给出的信号，不看行号。
+    #
+    # pandoc 已经明确区分了两者：有表头的表，r0 带 <w:trPr><w:tblHeader/>；
+    # 无表头的表（grid table 不写 ==== 分隔行就是），r0 没有 trPr。原先按
+    # ri == 0 判定，会把第一行**真实数据**加粗、划上表头下线，还标
+    # tblHeader 让它在每一页顶部重复。
+    head_row = None
+    if rows:
+        trpr0 = rows[0].find(w("trPr"))
+        if trpr0 is not None and trpr0.find(w("tblHeader")) is not None:
+            head_row = 0
     for ri, tr in enumerate(rows):
-        head = ri == 0
+        head = (ri == head_row)
         if head:
             trpr = tr.find(w("trPr"))
             if trpr is None:
@@ -567,7 +586,14 @@ def style_table_para(p, head: bool, style: str = "report"):
     # 表格里再换回宋体会在同一页出现两套字，很显眼
     cell_cn, head_cn, _latin = FONTS.get(style, FONTS["report"])
     sz = str(TABLE_CELL_SZ.get(style, SZ_WU))
-    for run in p.findall(w("r")):
+    # 包在 <w:hyperlink> 里的 run 不是 w:p 的直接子元素 —— 原先 findall 漏掉，
+    # 表格里的链接文字既没有 w:sz 也没有 w:rFonts，回落到 docDefaults 的
+    # 宋体 / 小四。实测同一张表里链接是 12.00pt 宋体、别的单元格 10.50pt
+    # 普惠体，大一号还换了字。
+    runs = list(p.findall(w("r")))
+    for _hl in p.findall(w("hyperlink")):
+        runs.extend(_hl.findall(w("r")))
+    for run in runs:
         rpr = get_rpr(run)
         fonts = rpr.find(w("rFonts"))
         if fonts is None:
@@ -710,7 +736,16 @@ HF_NS = (f'xmlns:w="{W}" xmlns:r="{R}"')
 
 
 def _rpr_hf(style: str = "report"):
-    body_cn, _head_cn, _latin = FONTS.get(style, FONTS["report"])
+    """页眉页脚的 run 属性。**字体固定宋体**，不跟随预设。
+
+    规范里页眉页脚就是宋体小五（见 references/typography.md 的字号表），
+    四个 Word 母版的 header1 / footer2 也都硬编码了宋体。这里原先取
+    FONTS[style]，于是 --footer-total 重建 footer1 之后，modern 预设下
+    正文节页脚变成普惠体，而同一页的页眉、目录页的页脚仍是宋体 —— 三处
+    字体不一致。report/gb 因为 FONTS 恰好也是宋体，看不出来。
+    """
+    del style                      # 保留参数以免改动调用点，但不再使用
+    body_cn = CN_SERIF
     return (f'<w:rPr><w:rFonts w:ascii="{body_cn}" w:hAnsi="{body_cn}" '
             f'w:cs="{body_cn}" w:eastAsia="{body_cn}" w:hint="eastAsia"/>'
             f'<w:color w:val="{BLACK}"/><w:sz w:val="{SZ_XWU}"/>'
