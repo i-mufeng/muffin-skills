@@ -17,7 +17,7 @@ BREAK_LEVEL="auto"; LINKS="black"; FOOTER_TOTAL=0
 TABLE_FIT=1; TABLE_RULE="auto"; TABLE_HEAD_FILL=0; CODE_COLOR=0
 TABLE_LINE_UNITS=80
 LINT=1; STRICT_LINT=0
-MASTHEAD_ORG=0
+MASTHEAD_ORG=0; VERBOSE=0
 # 记录用户是否显式动过这些开关 —— brief 会强制覆盖它们，覆盖前要告知
 TOC_SET=0; BREAK_SET=0
 INPUTS=()
@@ -80,6 +80,7 @@ usage() {
   --no-lint               跳过 Markdown 体检
   --strict-lint           体检发现 error 级问题时直接退出
   --keep-tex              保留中间 .tex，便于排查 LaTeX 报错
+  --verbose               打印引擎原始输出（默认过滤 tectonic 的字体路径噪音）
   -h, --help              显示本帮助
 
 示例:
@@ -92,38 +93,45 @@ EOF
 }
 
 # ---------- 解析参数 ----------
+# 取选项值。直接写 "$2" 在 set -u 下会抛 "$2: unbound variable" —— 用户漏写
+# 取值时只能看到一句 shell 内部报错，根本不知道是哪个选项的问题。
+val() {
+  [[ -n "$2" ]] || { echo "选项 $1 缺少取值" >&2; exit 2; }
+  printf '%s' "$2"
+}
+
 while [[ $# -gt 0 ]]; do
   case "$1" in
-    --to)          TO="$2"; shift 2 ;;
-    --style)       STYLE="$2"; shift 2 ;;
-    --out)         OUT="$2"; shift 2 ;;
-    --name)        NAME="$2"; shift 2 ;;
-    --title)       TITLE="$2"; shift 2 ;;
-    --subtitle)    SUBTITLE="$2"; shift 2 ;;
-    --org)         ORG="$2"; shift 2 ;;
-    --author)      AUTHOR="$2"; shift 2 ;;
-    --doc-no)      DOCNO="$2"; shift 2 ;;
-    --version)     VERSION="$2"; shift 2 ;;
-    --security)    SECURITY="$2"; shift 2 ;;
-    --date)        DATE="$2"; shift 2 ;;
+    --to)          TO="$(val "$1" "${2:-}")"; shift 2 ;;
+    --style)       STYLE="$(val "$1" "${2:-}")"; shift 2 ;;
+    --out)         OUT="$(val "$1" "${2:-}")"; shift 2 ;;
+    --name)        NAME="$(val "$1" "${2:-}")"; shift 2 ;;
+    --title)       TITLE="$(val "$1" "${2:-}")"; shift 2 ;;
+    --subtitle)    SUBTITLE="$(val "$1" "${2:-}")"; shift 2 ;;
+    --org)         ORG="$(val "$1" "${2:-}")"; shift 2 ;;
+    --author)      AUTHOR="$(val "$1" "${2:-}")"; shift 2 ;;
+    --doc-no)      DOCNO="$(val "$1" "${2:-}")"; shift 2 ;;
+    --version)     VERSION="$(val "$1" "${2:-}")"; shift 2 ;;
+    --security)    SECURITY="$(val "$1" "${2:-}")"; shift 2 ;;
+    --date)        DATE="$(val "$1" "${2:-}")"; shift 2 ;;
     --masthead-org) MASTHEAD_ORG=1; shift ;;
     --toc)         TOC=1; TOC_SET=1; shift ;;
     --no-toc)      TOC=0; TOC_SET=1; shift ;;
-    --toc-depth)   TOC_DEPTH="$2"; TOC_SET=1; shift 2 ;;
+    --toc-depth)   TOC_DEPTH="$(val "$1" "${2:-}")"; TOC_SET=1; shift 2 ;;
     --number)      NUMBER="yes"; shift ;;
     --no-number)   NUMBER="no"; shift ;;
-    --break-level) BREAK_LEVEL="$2"; BREAK_SET=1; shift 2 ;;
+    --break-level) BREAK_LEVEL="$(val "$1" "${2:-}")"; BREAK_SET=1; shift 2 ;;
     --break-h1)    BREAK_LEVEL="1"; BREAK_SET=1; shift ;;   # 兼容旧参数
     --no-break-h1) BREAK_LEVEL="0"; BREAK_SET=1; shift ;;
-    --bib)         BIB="$2"; shift 2 ;;
-    --csl)         CSL="$2"; shift 2 ;;
-    --links)       LINKS="$2"; shift 2 ;;
+    --bib)         BIB="$(val "$1" "${2:-}")"; shift 2 ;;
+    --csl)         CSL="$(val "$1" "${2:-}")"; shift 2 ;;
+    --links)       LINKS="$(val "$1" "${2:-}")"; shift 2 ;;
     --footer-total) FOOTER_TOTAL=1; shift ;;
-    --table-rule)  TABLE_RULE="$2"; shift 2 ;;
+    --table-rule)  TABLE_RULE="$(val "$1" "${2:-}")"; shift 2 ;;
     --table-head-fill) TABLE_HEAD_FILL=1; shift ;;
     --code-color)  CODE_COLOR=1; shift ;;
     --no-table-fit) TABLE_FIT=0; shift ;;
-    --emoji)       EMOJI="$2"; shift 2 ;;
+    --emoji)       EMOJI="$(val "$1" "${2:-}")"; shift 2 ;;
     --no-lint)     LINT=0; shift ;;
     --strict-lint) STRICT_LINT=1; shift ;;
     --keep-tex)    KEEP_TEX=1; shift ;;
@@ -142,12 +150,27 @@ BASE_STYLE="$STYLE"
 [[ "$STYLE" == "modern" || "$STYLE" == "modern-plain" ]] && BASE_STYLE="report"
 [[ "$TO" =~ ^(pdf|docx|both)$ ]] || { echo "--to 只能是 pdf / docx / both" >&2; exit 2; }
 [[ "$BREAK_LEVEL" =~ ^(auto|0|1|2|3)$ ]] || { echo "--break-level 只能是 auto/0/1/2/3" >&2; exit 2; }
+# 剩下这几个原先不校验：拼错 --links blcak 会一路传到 LaTeX，最后表现为
+# 一句看不懂的 hyperref 报错，或者干脆静默按默认值出图。
+[[ "$LINKS" =~ ^(black|color)$ ]] || { echo "--links 只能是 black / color" >&2; exit 2; }
+[[ "$EMOJI" =~ ^(text|strip|keep)$ ]] || { echo "--emoji 只能是 text / strip / keep" >&2; exit 2; }
+[[ "$TABLE_RULE" =~ ^(auto|three|grid)$ ]] || { echo "--table-rule 只能是 auto / three / grid" >&2; exit 2; }
+[[ "$TOC_DEPTH" =~ ^[1-6]$ ]] || { echo "--toc-depth 只能是 1..6" >&2; exit 2; }
+for _f in "$BIB" "$CSL"; do
+  [[ -z "$_f" || -f "$_f" ]] || { echo "文件不存在: $_f" >&2; exit 1; }
+done
 
 # ---------- 展开目录输入 ----------
+# 字节序会把 1- / 10- / 2- 排成 1、10、2，成册顺序直接错乱且不报错。
+# sort -V 按版本号（即自然数序）排；BSD sort 不支持时退回字节序。
+NATSORT=0
+printf '1\n' | sort -V >/dev/null 2>&1 && NATSORT=1
+md_sort() { if [[ $NATSORT -eq 1 ]]; then sort -V; else LC_ALL=C sort; fi; }
+
 FILES=()
 for it in "${INPUTS[@]}"; do
   if [[ -d "$it" ]]; then
-    while IFS= read -r f; do FILES+=("$f"); done < <(find "$it" -maxdepth 1 -name '*.md' | LC_ALL=C sort)
+    while IFS= read -r f; do FILES+=("$f"); done < <(find "$it" -maxdepth 1 -name '*.md' | md_sort)
     [[ -z "$NAME" ]] && NAME="$(basename "${it%/}")"
   elif [[ -f "$it" ]]; then
     FILES+=("$it")
@@ -158,6 +181,15 @@ done
 [[ ${#FILES[@]} -eq 0 ]] && { echo "没有匹配到任何 .md 文件" >&2; exit 1; }
 
 FIRST="${FILES[0]}"
+# 图片查找路径：原先只放第一个文件所在目录，多目录输入时后面文件里的
+# ![](img/x.png) 一律找不到，pandoc 只警告不报错，导出后图直接缺。
+RESPATH=""
+for f in "${FILES[@]}"; do
+  d="$(cd "$(dirname "$f")" && pwd)"
+  case ":$RESPATH:" in *":$d:"*) ;; *) RESPATH="${RESPATH:+$RESPATH:}$d" ;; esac
+done
+RESPATH="$RESPATH:$(pwd)"
+
 [[ -z "$OUT"  ]] && OUT="$(cd "$(dirname "$FIRST")" && pwd)"
 [[ -z "$NAME" ]] && NAME="$(basename "$FIRST" .md)"
 mkdir -p "$OUT"
@@ -180,6 +212,11 @@ CROSSREF=""
 command -v pandoc-crossref >/dev/null 2>&1 && CROSSREF="$(command -v pandoc-crossref)"
 
 PY="$(command -v python3 || true)"
+
+# 临时目录。frontmatter 解析、封面变量、pandoc 日志都往这里写，
+# 所以必须在第一个用到它的地方（frontmatter）之前建好。
+TMPDIR_PE="$(mktemp -d)"
+trap 'rm -rf "$TMPDIR_PE"' EXIT
 
 # pandoc 3.9 起 --highlight-style 改名 --syntax-highlighting
 HLOPT="--highlight-style"
@@ -208,37 +245,49 @@ fi
 # 必须自己读一遍 frontmatter：下面组装 COMMON 时会用 -M title=... 把标题传给
 # pandoc，而 -M 的优先级高于文档内的 YAML —— 不先读出来，用户写在 frontmatter
 # 里的 title 永远不会生效，还会被「首个 H1」顶掉。
-read_fm() {
-  [[ -z "$PY" ]] && return 0
-  "$PY" - "$FIRST" "$1" <<'PYEOF' 2>/dev/null || true
-import re, sys
-path, key = sys.argv[1], sys.argv[2]
+FM_TITLE=""; FM_SUBTITLE=""; FM_AUTHOR=""; FM_ORG=""
+FM_DOC_NO=""; FM_VERSION=""; FM_SECURITY=""; FM_DATE=""
+
+# 一次把整段 frontmatter 读出来。原先每个字段起一个 python 进程读同一个文件，
+# 8 个字段就是 8 次解释器冷启动（约 0.3~0.5s），纯浪费。
+#
+# python 输出的是一段 shell 赋值，用 source 读进来（值经 shlex.quote 转义）。
+# 不写成 FM=$(python <<EOF ...)：macOS 自带的 bash 3.2 解析不了命令替换里
+# 嵌的 heredoc，整个脚本会在语法阶段就报 unexpected EOF。
+if [[ -n "$PY" ]]; then
+  "$PY" - "$FIRST" > "$TMPDIR_PE/fm.sh" 2>/dev/null <<'PYEOF' || true
+import re, shlex, sys
+KEYS = ('title', 'subtitle', 'author', 'org',
+        'doc-no', 'version', 'security', 'date')
 try:
-    text = open(path, encoding='utf-8', errors='replace').read()
+    text = open(sys.argv[1], encoding='utf-8', errors='replace').read()
 except OSError:
-    sys.exit(0)
+    text = ''
+vals = {}
 m = re.match(r'^---\r?\n(.*?)\r?\n(?:---|\.\.\.)\r?\n', text, re.S)
-if not m:
-    sys.exit(0)
-for line in m.group(1).split('\n'):
-    km = re.match(r'^([A-Za-z_][\w-]*)\s*:\s*(.*)$', line)
-    if km and km.group(1) == key:
-        v = km.group(2).strip()
+if m:
+    for line in m.group(1).split('\n'):
+        km = re.match(r'^([A-Za-z_][\w-]*)\s*:\s*(.*)$', line)
+        if not km:
+            continue
+        k, v = km.group(1), km.group(2).strip()
         if len(v) >= 2 and v[0] == v[-1] and v[0] in '"\'':
             v = v[1:-1]
-        print(v)
-        break
+        vals[k] = v
+print('\n'.join('FM_%s=%s' % (k.upper().replace('-', '_'), shlex.quote(vals.get(k, '')))
+                 for k in KEYS))
 PYEOF
-}
+  [[ -s "$TMPDIR_PE/fm.sh" ]] && . "$TMPDIR_PE/fm.sh"
+fi
 
-[[ -z "$TITLE"    ]] && TITLE="$(read_fm title)"
-[[ -z "$SUBTITLE" ]] && SUBTITLE="$(read_fm subtitle)"
-[[ -z "$AUTHOR"   ]] && AUTHOR="$(read_fm author)"
-[[ -z "$ORG"      ]] && ORG="$(read_fm org)"
-[[ -z "$DOCNO"    ]] && DOCNO="$(read_fm doc-no)"
-[[ -z "$VERSION"  ]] && VERSION="$(read_fm version)"
-[[ -z "$SECURITY" ]] && SECURITY="$(read_fm security)"
-[[ -z "$DATE"     ]] && DATE="$(read_fm date)"
+[[ -z "$TITLE"    ]] && TITLE="$FM_TITLE"
+[[ -z "$SUBTITLE" ]] && SUBTITLE="$FM_SUBTITLE"
+[[ -z "$AUTHOR"   ]] && AUTHOR="$FM_AUTHOR"
+[[ -z "$ORG"      ]] && ORG="$FM_ORG"
+[[ -z "$DOCNO"    ]] && DOCNO="$FM_DOC_NO"
+[[ -z "$VERSION"  ]] && VERSION="$FM_VERSION"
+[[ -z "$SECURITY" ]] && SECURITY="$FM_SECURITY"
+[[ -z "$DATE"     ]] && DATE="$FM_DATE"
 
 if [[ -z "$TITLE" ]]; then
   TITLE="$(grep -m1 '^# ' "$FIRST" 2>/dev/null | sed 's/^# *//' || true)"
@@ -330,8 +379,6 @@ HEAD_LEVEL=1
 [[ "$BASE_STYLE" == "report" && "$BREAK_LEVEL" == "2" ]] && HEAD_LEVEL=2
 
 # ---------- 封面变量（LaTeX 侧）----------
-TMPDIR_PE="$(mktemp -d)"
-trap 'rm -rf "$TMPDIR_PE"' EXIT
 COVERVARS="$TMPDIR_PE/cover-vars.tex"
 
 if [[ -n "$PY" ]]; then
@@ -364,6 +411,32 @@ else
     "$TOC" "$HEAD_LEVEL" "$FOOTER_TOTAL" "$MASTHEAD_ORG" > "$COVERVARS"
 fi
 
+# ---------- pandoc 调用包装 ----------
+# tectonic 会为每个用到的字体文件打印一行「accessing absolute path ... build may
+# not be reproducible」。实测一次 modern 导出刷 49 行，占全部输出的四分之三，
+# 把 md-lint 的体检结果和真正的报错全冲出屏幕。
+#
+# 只过滤下面这几条「每次必现且无害」的：字体绝对路径、TeX 引擎汇总提示、
+# lineno.sty 自带的非 UTF-8 字节、hyperref 的 @page 重复定义。
+# 其余一律放行；一旦 pandoc 退出码非 0，原样吐出完整日志，排错不丢信息。
+# 想看全部：--verbose。
+run_pandoc() {
+  local log="$TMPDIR_PE/pandoc.err" rc=0
+  "$PANDOC" "$@" 2>"$log" || rc=$?
+  if [[ $rc -ne 0 || $VERBOSE -eq 1 ]]; then
+    [[ -s "$log" ]] && cat "$log" >&2
+  elif [[ -s "$log" ]]; then
+    grep -v \
+      -e 'accessing absolute path' \
+      -e 'build may not be reproducible' \
+      -e 'warnings were issued by the TeX engine' \
+      -e 'lineno\.sty:.*Invalid UTF-8' \
+      -e 'Object @page\.[0-9]* already defined' \
+      "$log" >&2 || true
+  fi
+  return $rc
+}
+
 # ---------- 组装公共参数 ----------
 # -blank_before_header：标题前忘了空行时也当标题处理。
 #   这是中文长文档最常见的静默事故：「## 四、待确认事项」被吞进上一段，
@@ -387,7 +460,7 @@ COMMON=( "${FILES[@]}"
   -M "table-line-units=$TABLE_LINE_UNITS"
   -M "table-head-fill=$TABLE_HEAD_FILL"
   -M "code-color=$CODE_COLOR"
-  --resource-path="$(dirname "$FIRST"):$(pwd)"
+  --resource-path="$RESPATH"
 )
 [[ $TABLE_FIT -eq 1 && -f "$ASSETS/tablefit.lua" ]] \
   && COMMON+=( --lua-filter="$ASSETS/tablefit.lua" ) \
@@ -409,8 +482,16 @@ fi
 
 # 参考文献：citeproc 同时服务 PDF 与 Word，两侧样式完全一致
 if [[ -n "$BIB" ]]; then
-  [[ -z "$CSL" && "$STYLE" == "gb" && -f "$ASSETS/gb-t-7714-2015-numeric.csl" ]] \
-    && CSL="$ASSETS/gb-t-7714-2015-numeric.csl"
+  # GB/T 7714 的 CSL 不随 skill 分发（体积 + 上游会更新），装不装决定了
+  # gb 预设的参考文献到底是不是国标样式 —— 缺了必须说，不能静默降级。
+  if [[ -z "$CSL" && "$STYLE" == "gb" ]]; then
+    if [[ -f "$ASSETS/gb-t-7714-2015-numeric.csl" ]]; then
+      CSL="$ASSETS/gb-t-7714-2015-numeric.csl"
+    else
+      echo "  ! 未找到 GB/T 7714 的 CSL，参考文献将退回 pandoc 默认样式" >&2
+      echo "    补装: scripts/doctor.sh --install" >&2
+    fi
+  fi
   COMMON+=( --citeproc --bibliography="$BIB" )
   [[ -n "$CSL" ]] && COMMON+=( --csl="$CSL" )
 fi
@@ -475,10 +556,10 @@ build_pdf() {
   fi
 
   if [[ $KEEP_TEX -eq 1 ]]; then
-    "$PANDOC" "${args[@]}" -o "$OUT/$NAME.tex"
+    run_pandoc "${args[@]}" -o "$OUT/$NAME.tex"
     echo "  中间文件: $OUT/$NAME.tex"
   fi
-  "$PANDOC" "${args[@]}" -o "$OUT/$NAME.pdf"
+  run_pandoc "${args[@]}" -o "$OUT/$NAME.pdf"
   echo "✓ PDF  → $OUT/$NAME.pdf  ($(du -h "$OUT/$NAME.pdf" | cut -f1))"
 }
 
@@ -505,7 +586,7 @@ build_docx() {
   # 否则拿不到已确定的 meta.title。
   [[ -f "$ASSETS/cover-docx.lua" ]] && args+=( --lua-filter="$ASSETS/cover-docx.lua" )
 
-  "$PANDOC" "${args[@]}" -o "$OUT/$NAME.docx"
+  run_pandoc "${args[@]}" -o "$OUT/$NAME.docx"
 
   # 分节符、页眉页脚、A4、页码格式、目录标题：pandoc 写不了，落到后处理
   if [[ -n "$PY" && -f "$SCRIPTS/docx-postprocess.py" ]]; then
@@ -519,6 +600,15 @@ build_docx() {
 # ---------- 执行 ----------
 echo "── paper-export ─────────────────────────"
 echo "  输入   : ${#FILES[@]} 个文件"
+# 多文件合并时把实际顺序打出来。顺序错了（比如文件名没补零）在成品里
+# 才发现，代价远高于这几行输出。
+if [[ ${#FILES[@]} -gt 1 ]]; then
+  i=1
+  for f in "${FILES[@]}"; do
+    echo "           $i. $(basename "$f")"
+    i=$((i + 1))
+  done
+fi
 echo "  标题   : $TITLE${SUBTITLE:+  /  $SUBTITLE}"
 if [[ "$STYLE" == "brief" ]]; then
   echo "  预设   : brief（简报/通报）  无目录 无页眉页脚 无页码 不分页"
@@ -530,7 +620,13 @@ else
   echo "  分页   : 第 $BREAK_LEVEL 级标题前   页眉取第 $HEAD_LEVEL 级"
 fi
 echo "  引擎   : ${ENGINE:-<无>}   pandoc: $("$PANDOC" --version | head -1 | awk '{print $2}')"
-echo "  crossref: ${CROSSREF:+已启用}${CROSSREF:-未安装（@fig: 引用不可用）}"
+# 原先写成 ${CROSSREF:+已启用}${CROSSREF:-未安装...}：CROSSREF 非空时
+# 后一个展开吐的是它自己的值，于是打印成「已启用/opt/homebrew/bin/...」。
+if [[ -n "$CROSSREF" ]]; then
+  echo "  crossref: 已启用"
+else
+  echo "  crossref: 未安装（@fig: / @tbl: 引用不可用）"
+fi
 echo "─────────────────────────────────────────"
 
 case "$TO" in

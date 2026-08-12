@@ -35,6 +35,9 @@ scripts/export.sh 论文.md --style gb --to pdf
 scripts/export.sh ./docs/交付文档 --name 交付文档 --title "系统交付文档" --to both
 ```
 
+目录输入按**文件名自然序**合并（`1-` `2-` `10-`，不是字节序的 `1-` `10-` `2-`），
+并在导出前把实际顺序逐个打印出来 —— 顺序错了要在这里发现，不是在成品里。
+
 首次使用或报错时先自检：`scripts/doctor.sh`（`--install` 可自动补装）。
 
 ## 五套预设怎么选
@@ -288,7 +291,9 @@ rsvg-convert --keep-aspect-ratio --width 2400 \
   溢出、遮挡、裁剪、缺字、比例失真和模糊后才交付。
 
 **参考文献**：`--bib refs.bib`，正文里 `[@zhang2024]`。PDF 与 Word 共用
-citeproc，两侧样式完全一致；gb 预设自动套 GB/T 7714。
+citeproc，两侧样式完全一致；gb 预设自动套 GB/T 7714 —— 前提是
+`assets/gb-t-7714-2015-numeric.csl` 在位（不随 skill 分发，`scripts/doctor.sh
+--install` 补装）。缺了会退回 pandoc 默认样式，导出时会明确提示，不静默降级。
 
 ## 常用选项
 
@@ -312,7 +317,12 @@ citeproc，两侧样式完全一致；gb 预设自动套 GB/T 7714。
 --bib FILE [--csl FILE]     参考文献
 --no-lint / --strict-lint   Markdown 体检
 --keep-tex                  保留中间 .tex，排查 LaTeX 报错时用
+--verbose                   打印引擎原始输出（默认过滤 tectonic 的字体路径噪音）
 ```
+
+取值写错（`--links blcak`、`--emoji foo`、`--toc-depth 9`）或漏写取值会立即
+以中文报错退出，不会带着默认值静默出图。`--bib` / `--csl` 指向的文件不存在
+也在启动时就报。
 
 ## 字体
 
@@ -363,6 +373,9 @@ Bold 变成 Word 自己描边的伪粗。
 1. `scripts/doctor.sh` 先自检工具链与字体。
 2. `python3 scripts/md-lint.py 你的文档.md` 看是不是源文件的问题。
 3. 加 `--keep-tex`，LaTeX 报错行号对应生成的 `.tex`，直接定位。
+   想看引擎的完整原始输出再加 `--verbose`（默认过滤 tectonic 每次必刷的
+   40~50 行「accessing absolute path」字体路径警告；编译失败时无论有没有
+   `--verbose` 都会原样吐出完整日志）。
 4. Word 效果可用 `soffice --headless --convert-to pdf --outdir /tmp x.docx` 预览。
 5. 常见报错与机理见 `references/troubleshooting.md`。
 
