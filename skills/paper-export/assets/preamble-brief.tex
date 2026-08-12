@@ -1,0 +1,186 @@
+% ============================================================
+%  paper-export :: BRIEF 预设（简报 / 通报 / 会议纪要 / 情况说明）
+%  配合: -V documentclass=ctexart
+%
+%  参照《党政机关公文格式》GB/T 9704-2012 的观感做的简化版：
+%    无封面页、无目录、无页眉、无页码、不主动分页。
+%    首页顶部是「文头」（标题 + 副标题 + 双分隔线），紧接着就是正文，
+%    末尾右下角是落款（单位 / 编制人 / 日期）。
+%
+%  层级约定与 report 一致：H1 是文档名（被摘到文头），
+%  H2 才是公文里的「一、」。
+% ============================================================
+
+% ---------- 1. 页面 ----------
+% GB/T 9704 的版心：天头 37mm、地脚 35mm、左 28mm、右 26mm。
+% 公文不装订成册，左边距不再额外留装订线。
+\usepackage{geometry}
+\geometry{a4paper, top=3.7cm, bottom=3.5cm, left=2.8cm, right=2.6cm}
+
+\xeCJKsetup{CJKspace=true}
+
+% 单字成行（「……确保审计可追 / 溯」这种末行只剩一个字）在中文排版里是硬伤，
+% 仿宋三号一行才 28 个字左右，触发得比小四正文频繁得多。
+% CheckSingle 让 xeCJK 主动把倒数第二行匀一个字下来，末行至少两字。
+\xeCJKsetup{CheckSingle=true}
+
+% ---------- 2. 字体 ----------
+% macOS 的 STFangsong 位于系统字体集合中，xdvipdfmx 可能无法把它嵌入 PDF，
+% 导致文件换到其他设备后正文空白。无封面版优先使用独立 OTF 的思源宋体，
+% 缺失时回退到同样可嵌入的阿里巴巴普惠体；最后才使用系统仿宋。
+\IfFontExistsTF{Noto Serif CJK SC}
+  {\setCJKfamilyfont{zhfs}{Noto Serif CJK SC}
+   \newfontfamily\pefangsong{Noto Serif CJK SC}
+   \setmainfont{Noto Serif CJK SC}}
+  {\IfFontExistsTF{AlibabaPuHuiTi_3_55_Regular}
+    {\setCJKfamilyfont{zhfs}{AlibabaPuHuiTi_3_55_Regular}
+     \newfontfamily\pefangsong{AlibabaPuHuiTi_3_55_Regular}
+     \setmainfont{AlibabaPuHuiTi_3_55_Regular}}
+    {\setCJKfamilyfont{zhfs}{STFangsong}
+     \newfontfamily\pefangsong{STFangsong}
+     \setmainfont{STFangsong}}}
+\renewcommand{\fangsong}{\pefangsong\CJKfamily{zhfs}}
+
+% 文头主标题：公文标准是「方正小标宋简体」—— 商业字体，装不了也不该依赖。
+% Songti SC 自带 Black 字重，字形就是粗宋，是最接近小标宋的系统替代；
+% 用黑体顶替则会丢掉宋体的横细竖粗，一眼就不像通报。
+%
+% macOS 自带的 Songti SC **有** Black 字重，但它藏在 Songti.ttc 这个字体集合
+% 的非首 face 里，XeTeX/tectonic 取不到 —— 三种写法（family+BoldFont、
+% 全名 Songti SC Black、PostScript 名 STSongti-SC-Black）实测全部落空，
+% 静默回退到不含汉字的字体，标题整行排成豆腐块且编译不报错。
+% （对比：\heiti 用的 Heiti SC Medium 能成，因为它是独立的 .ttf 而非集合成员。）
+%
+% 所以走思源宋体 Black（SIL OFL 免费，独立 OTF，字形正是粗宋）：
+%   brew install --cask font-noto-serif-cjk-sc
+% 没装则回退到 Songti SC 伪粗 —— 观感差一档但不会出豆腐块。
+\IfFontExistsTF{Noto Serif CJK SC Black}
+  {\setCJKfamilyfont{zhxbs}{Noto Serif CJK SC Black}
+   \newfontfamily\pexiaobiaosong{Noto Serif CJK SC Black}}
+  {\IfFontExistsTF{Source Han Serif SC Heavy}
+    {\setCJKfamilyfont{zhxbs}{Source Han Serif SC Heavy}
+     \newfontfamily\pexiaobiaosong{Source Han Serif SC Heavy}}
+    {\setCJKfamilyfont{zhxbs}{Songti SC}[AutoFakeBold=2.5]
+     \newfontfamily\pexiaobiaosong{Songti SC}[AutoFakeBold=2.5]}}
+\newcommand{\xiaobiaosong}{\pexiaobiaosong\CJKfamily{zhxbs}}
+
+% ---------- 3. 正文 ----------
+% 三号（16pt）仿宋，行距固定 28pt —— 公文一页 22 行的来源。
+% \linespread 是相对 1.2 倍基准的倍数：28 / (16 × 1.2) ≈ 1.46。
+%
+% 为什么要重定义 \normalsize：ctex 的 zihao 类选项只接受 {5, -4, 4}，
+% 给它 3 会在 \ProcessKeysOptions 阶段直接报错、一页都出不来。
+% export.sh 只能传四号打底，正文真正的三号靠这里补上 —— 而且必须走
+% \normalsize，否则任何调用 \normalsize 的环境（列表、题注、脚注…）
+% 都会把字号弹回四号。
+\usepackage{indentfirst}
+\renewcommand{\normalsize}{\zihao{3}}
+\AtBeginDocument{%
+  \setlength{\parindent}{2em}%
+  \linespread{1.46}\fangsong\normalsize}
+\setlength{\parskip}{0pt plus 1pt}
+
+% ---------- 4. 标题层级 ----------
+%   H1 → 三号黑体居中（正常情况下已被摘到文头，留着兜底）
+%   H2 → 三号黑体      「一、」
+%   H3 → 三号楷体      「（一）」
+%   H4 → 三号仿宋加粗  「1.」
+%   H5 → 三号仿宋加粗  「(1)」
+% 公文的层级靠**字体**区分而非字号，四级标题与正文同为三号。
+% 字号不拉开是刻意的 —— 通报正文短，用字号分级反而显得像技术手册。
+%
+% 标题一律左顶格（indent=0）。红头文件里标题确实和正文一样缩进 2 字，
+% 但那套版式配的是满版心的红反线与文号栏，左边界另有锚点；这里只留了
+% 双分隔线，标题再缩进就变成「线满宽、通篇无一行顶格」，左边白白空出
+% 一条 1.2cm 的带子，版心看着整体右移了。缩进只留给正文段落首行。
+\ctexset{
+  section/format           = \heiti\zihao{3}\centering,
+  section/beforeskip       = 12pt,
+  section/afterskip        = 12pt,
+  subsection/format        = \heiti\zihao{3},
+  subsection/indent        = 0pt,
+  subsection/beforeskip    = 8pt,
+  subsection/afterskip     = 4pt,
+  subsubsection/format     = \kaishu\zihao{3},
+  subsubsection/indent     = 0pt,
+  subsubsection/beforeskip = 6pt,
+  subsubsection/afterskip  = 3pt,
+  paragraph/format         = \fangsong\bfseries\zihao{3},
+  paragraph/indent         = 0pt,
+  paragraph/runin          = false,
+  paragraph/beforeskip     = 4pt,
+  paragraph/afterskip      = 2pt,
+  subparagraph/format      = \fangsong\bfseries\zihao{3},
+  subparagraph/indent      = 0pt,
+  subparagraph/runin       = false,
+  subparagraph/beforeskip  = 3pt,
+  subparagraph/afterskip   = 2pt,
+}
+
+% 列表标记也顶格。preamble-common 把一级 itemize 的 labelindent 设成 2em
+% 是为了和正文首行缩进对齐，在 brief 里会和标题的顶格打架 —— 同一份文档
+% 里出现两条左边界，比哪条都不缩进更乱。
+\setlist[itemize,1]{label=\textbullet,
+                    labelindent=0em,labelwidth=0.9em,labelsep=0.5em,
+                    leftmargin=1.4em}
+\setlist[enumerate,1]{label=\arabic*.,
+                    labelindent=0em,labelwidth=1.3em,labelsep=0.5em,
+                    leftmargin=1.8em}
+
+% ---------- 5. 分页 ----------
+% preamble-common 给每级标题都 \pretocmd 了 \needspace{3.5~4.5\baselineskip}，
+% 用意是「标题后至少留 3 行正文，别让标题孤零零挂在页面末行」。
+%
+% 那套阈值是按小四正文（行距 1.5 → \baselineskip ≈ 17.5pt）定的。brief 的
+% \baselineskip 是 28pt，同样的「4.5 行」变成 126pt ≈ 4.4cm；简报又是标题密、
+% 段落短的文体，几乎每个标题都会触发，结果是页面用到三分之一就硬断，
+% 底下留一大片空白 —— 比标题挂在页底难看得多。
+%
+% \needspace 是 \pretocmd 上去的，没法「取消」，只能整体重定义：
+% 收到 2.5\baselineskip（标题 + 1 行正文 + 余量，70pt），既挡住真正的孤标题，
+% 又不会为了凑行数把半页内容推走。
+%
+% 2 行是不够的：标题自身的 beforeskip 也吃在这段空间里，恰好卡在边界时
+% 标题会留在页底、正文被甩到下一页 —— 正是要防的情况。半行余量买断它。
+\makeatletter
+\AtBeginDocument{%
+  \renewcommand{\needspace}[1]{\pe@needspace}}
+\newcommand{\pe@needspace}{%
+  \begingroup
+    \setlength{\dimen@}{2.5\baselineskip}%
+    \penalty-100\vskip\dimen@\penalty9999\vskip-\dimen@\penalty\z@
+  \endgroup}
+\makeatother
+
+% 加粗段落（Markdown 里 `**第一步：准备演示环境**` 单独成段的写法）实际是
+% 正文而非标题，LaTeX 不会为它做「后面至少留一行」的保护，于是它常常
+% 孤零零躺在页底。给所有段落加一点 \clubpenalty 之外的保护成本太高，
+% 这里只把段间断页的代价抬高，让 TeX 优先在别处断。
+\interlinepenalty=200
+
+% ---------- 6. 页眉页脚 ----------
+% 一律为空。简报是「一口气读完」的文体，页码和页眉只会让它看起来像报告。
+% \pagestyle{empty} 之外还得压掉 plain：article 的 \section* 会临时切到
+% plain，否则首页底部会冒出一个孤零零的页码。
+\makeatletter
+\renewcommand{\ps@plain}{\let\@mkboth\@gobbletwo
+  \let\@oddhead\@empty \let\@evenhead\@empty
+  \let\@oddfoot\@empty \let\@evenfoot\@empty}
+\makeatother
+\pagestyle{empty}
+\AtBeginDocument{\pagestyle{empty}\thispagestyle{empty}}
+
+% ---------- 7. 图表题注 ----------
+% 正文已是三号，题注用五号会显得断层，改用小四黑体。
+\usepackage{caption}
+\DeclareCaptionFont{pcap}{\heiti\zihao{-4}\color{pblack}}
+\captionsetup{font=pcap,labelsep=quad,skip=6pt,justification=centering,
+              singlelinecheck=true}
+\captionsetup[figure]{position=bottom}
+\captionsetup[table]{position=top}
+
+% ---------- 8. 表格 ----------
+% 正文三号偏大，表格照抄会撑爆版心。压到小四，行距回到 1.0。
+% preamble-common 已把 \arraystretch 等设好，这里只调字号。
+\AtBeginEnvironment{longtable}{\fangsong\zihao{-4}\linespread{1.0}\selectfont}
+\AtBeginEnvironment{tabular}{\fangsong\zihao{-4}\linespread{1.0}\selectfont}

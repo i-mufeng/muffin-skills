@@ -1,0 +1,35 @@
+% ============================================================
+%  paper-export :: MODERN-PLAIN 预设
+%
+%  在 report 版式和 modern 字体层之后加载。仅改变文档入口：
+%  不生成独立封面和目录，标题直接位于正文第一页顶部。
+% ============================================================
+
+\makeatletter
+\fancypagestyle{peplainfirst}{%
+  \fancyhf{}%
+  \fancyfoot[C]{\pe@hf\pe@pagenum}%
+  \renewcommand{\headrulewidth}{0pt}%
+  \renewcommand{\footrulewidth}{0pt}%
+}
+\renewcommand{\maketitle}{%
+  \begingroup
+    \thispagestyle{peplainfirst}%
+    \begin{center}%
+      {\heiti\zihao{2}\@title\par}%
+    \end{center}%
+    \vspace{12pt}%
+  \endgroup
+  \pagestyle{fancy}%
+}
+\makeatother
+
+% 第二页起保留页眉横线，但不显示文档标题或当前章节名。
+\makeatletter
+\fancypagestyle{fancy}{%
+  \fancyhf{}%
+  \fancyfoot[C]{\pe@hf\pe@pagenum}%
+  \renewcommand{\headrulewidth}{0.6pt}%
+  \renewcommand{\footrulewidth}{0pt}%
+}
+\makeatother

@@ -1,0 +1,157 @@
+% ============================================================
+%  paper-export :: GB 预设（中文学位论文 / 中文期刊）
+%  配合: -V documentclass=ctexbook --top-level-division=chapter
+%
+%  注入点: pandoc --include-in-header（位于所有 \usepackage 之后，
+%          因此这里的设置可以覆盖 pandoc 默认模板的行为）
+% ============================================================
+
+% ---------- 1. 页面：左侧留装订线 ----------
+\usepackage{geometry}
+\geometry{a4paper,
+          top=2.54cm,bottom=2.54cm,left=3.17cm,right=2.54cm,
+          headheight=14pt,headsep=0.55cm,footskip=1.05cm}
+
+% 保留 CJK 字符之间的空格（否则「第一章 绪论」会被挤成「第一章绪论」）
+\xeCJKsetup{CJKspace=true}
+
+% ---------- 2. 正文：首行缩进 2 字符，1.5 倍行距 ----------
+\usepackage{indentfirst}
+\AtBeginDocument{\setlength{\parindent}{2em}}
+\linespread{1.5}\selectfont
+\setlength{\parskip}{0pt plus 1pt}
+
+% ---------- 3. 标题层级 ----------
+%   章 → 三号黑体居中，自动编号「第一章」，另起一页（\chapter 自带）
+%   节 → 四号黑体
+%   条 → 小四黑体
+%   款 → 小四黑体
+\ctexset{
+  chapter/name             = {第,章},
+  chapter/number           = \chinese{chapter},
+  chapter/format           = \heiti\zihao{3}\centering,
+  chapter/beforeskip       = 0pt,
+  chapter/afterskip        = 24pt,
+  section/format           = \heiti\zihao{4}\raggedright,
+  section/beforeskip       = 18pt,
+  section/afterskip        = 12pt,
+  subsection/format        = \heiti\zihao{-4}\raggedright,
+  subsection/beforeskip    = 12pt,
+  subsection/afterskip     = 6pt,
+  subsubsection/format     = \heiti\zihao{-4}\raggedright,
+  subsubsection/beforeskip = 9pt,
+  subsubsection/afterskip  = 3pt,
+  paragraph/format         = \songti\bfseries\zihao{-4}\raggedright,
+  paragraph/runin          = false,
+}
+
+% ---------- 4. 目录 ----------
+\renewcommand{\contentsname}{目\hspace{1em}录}
+
+\makeatletter
+\renewcommand*\l@chapter[2]{%
+  \vskip 6pt plus 1pt
+  {\heiti\zihao{-4}\@dottedtocline{0}{0em}{2.4em}{#1}{#2}}}
+\renewcommand*\l@section[2]{%
+  \vskip 2pt plus 1pt
+  {\songti\zihao{-4}\@dottedtocline{1}{1.6em}{2.4em}{#1}{#2}}}
+\renewcommand*\l@subsection[2]{%
+  {\songti\zihao{5}\@dottedtocline{2}{4.0em}{3.0em}{#1}{#2}}}
+\renewcommand*\l@subsubsection[2]{%
+  {\songti\zihao{5}\@dottedtocline{3}{7.0em}{3.6em}{#1}{#2}}}
+\renewcommand{\@pnumwidth}{2.2em}
+\renewcommand{\@tocrmarg}{2.8em}
+
+% 目录排完后切回正文页码与页眉样式（正文从阿拉伯数字 1 重新开始）。
+%
+% 关键在 \aftergroup。pandoc 的 LaTeX 模板把目录整段包在一对花括号里
+% （为了让 \hypersetup{linkcolor=toccolor} 只作用于目录）：
+%     {\hypersetup{...}\setcounter{tocdepth}{N}\tableofcontents}
+% 而 \pagestyle 做的是局部 \let，出了这个分组就弹回 pefront —— 正文页会一直
+% 顶着「前置」的页眉、右侧永远没有章节名。偏偏 \pagenumbering 用的是 \gdef，
+% 页码看上去完全正常，于是这个 bug 表现为「页码对、页眉不对」，极难察觉。
+%
+% 用 \globaldefs=1 强行全局化是行不通的：它会把 \protected@write 内部那些
+% 本该局部的 \let\protect... 一并全局化，之后写进 .aux 的控制序列会集体丢掉
+% 反斜杠，下一轮编译直接报 "Missing \begin{document}"。
+% \aftergroup 把切换推迟到分组结束之后、正文开始之前执行，干净且无副作用。
+\AtBeginDocument{%
+  \let\pe@origtoc\tableofcontents
+  \renewcommand{\tableofcontents}{%
+    \pe@origtoc
+    \aftergroup\pe@beginbody}}
+\newcommand{\pe@beginbody}{%
+  \clearpage\pagenumbering{arabic}\pagestyle{fancy}}
+\makeatother
+
+% ---------- 5. 页眉页脚 ----------
+% 学位论文通行做法：页眉居中当前章名 + 横线，页脚居中页码。
+% 三节：封面（不计页码）→ 前置（罗马）→ 正文（阿拉伯从 1）
+\usepackage{fancyhdr}
+\usepackage{lastpage}
+
+\makeatletter
+\providecommand\pe@title{}
+\AtBeginDocument{\global\let\pe@title\@title}
+% 与 report 同理：fancyhdr 切换页面样式时会重置 \chaptermark，
+% 因此把它包成宏、在每个 \fancypagestyle 体内重新施加。
+\newcommand{\pe@setmarks}{%
+  \renewcommand{\chaptermark}[1]{\markboth{\CTEXthechapter\hspace{0.5em}##1}{}}}
+
+\providecommand{\pefootertotal}{0}
+\newcommand{\pe@pagenum}{%
+  \ifnum\pefootertotal=1\relax
+    第~\thepage~页\quad 共~\pageref*{LastPage}~页%
+  \else
+    \thepage
+  \fi}
+\newcommand{\pe@hf}{\songti\zihao{-5}\color{pblack}}
+
+\fancypagestyle{fancy}{%
+  \pe@setmarks
+  \fancyhf{}%
+  \fancyhead[C]{\pe@hf\leftmark}%
+  \fancyfoot[C]{\pe@hf\pe@pagenum}%
+  \renewcommand{\headrulewidth}{0.6pt}%
+  \renewcommand{\footrulewidth}{0pt}}
+\fancypagestyle{pefront}{%
+  \fancyhf{}%
+  \fancyhead[C]{\pe@hf\pe@title}%
+  \fancyfoot[C]{\pe@hf\thepage}%
+  \renewcommand{\headrulewidth}{0.6pt}%
+  \renewcommand{\footrulewidth}{0pt}}
+\fancypagestyle{empty}{\fancyhf{}%
+  \renewcommand{\headrulewidth}{0pt}\renewcommand{\footrulewidth}{0pt}}
+% \chapter 会把当页切成 plain：保留页码，去掉页眉
+\fancypagestyle{plain}{%
+  \fancyhf{}%
+  \fancyfoot[C]{\pe@hf\pe@pagenum}%
+  \renewcommand{\headrulewidth}{0pt}\renewcommand{\footrulewidth}{0pt}}
+\makeatother
+
+% \headrule 必须自己判 \headrulewidth —— 直接画死线会让 \fancypagestyle{empty}
+% 里的 headrulewidth=0pt 失效，封面顶端就会漏出一条页眉线。
+\renewcommand{\headrule}{%
+  \ifdim\headrulewidth>0pt\relax
+    {\color{prule}\hrule height \headrulewidth}%
+  \fi}
+\pagestyle{empty}
+
+% ---------- 6. 图表题注：黑体五号居中，标签与内容间空一格 ----------
+\usepackage{caption}
+\DeclareCaptionFont{pcap}{\heiti\zihao{5}\color{pblack}}
+\captionsetup{font=pcap,labelsep=quad,skip=6pt,justification=centering,
+              singlelinecheck=true}
+\captionsetup[figure]{position=bottom}
+\captionsetup[table]{position=top}
+
+% ---------- 7. 编号按章：图 1-1 / 表 2-3 / 式 (4-5) ----------
+\renewcommand{\thefigure}{\thechapter-\arabic{figure}}
+\renewcommand{\thetable}{\thechapter-\arabic{table}}
+\renewcommand{\theequation}{\thechapter-\arabic{equation}}
+\makeatletter
+\@addtoreset{figure}{chapter}
+\@addtoreset{table}{chapter}
+\@addtoreset{equation}{chapter}
+\makeatother
+

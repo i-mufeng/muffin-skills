@@ -1,0 +1,62 @@
+% ============================================================
+%  paper-export :: BRIEF 预设的文头（替代 titlepage.tex）
+%
+%  简报不是报告：没有封面页，标题就印在正文第一页的顶部，下面一道
+%  「上粗下细」的双线把文头与正文隔开 —— 这是国内通报/纪要最好认的特征。
+%
+%      〔单位名，可选〕
+%       2026年8月5日会议内容简报          ← 二号黑体居中
+%          — 项目管理模块 —              ← 三号楷体居中，可选
+%      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+%      ────────────────────────────────
+%
+%  字段值由 export.sh 生成的临时 cover-vars.tex 用 \def 注入（已做转义）。
+%  日期与编制人不在文头，走文末落款（signoff-brief.tex）。
+% ============================================================
+
+\makeatletter
+
+\providecommand{\peorg}{}          % 发文单位（落款也会用）
+\providecommand{\pesubtitle}{}     % 副标题
+\providecommand{\pemastheadorg}{0} % 单位名是否显示在文头（默认只在落款出现）
+
+\newcommand{\pe@ifempty}[3]{\ifx#1\@empty#2\else#3\fi}
+
+\renewcommand{\maketitle}{%
+  \thispagestyle{empty}%
+  \begin{center}
+    \color{pblack}
+    % 单位名：默认不在文头出现（落款里已经有一份，重复反而累赘）
+    \ifnum\pemastheadorg=1\relax
+      \pe@ifempty{\peorg}{}{%
+        {\kaishu\zihao{4}\peorg\par}
+        \vspace{0.6\baselineskip}}
+    \fi
+
+    % 主标题：二号小标宋（Songti SC Black），公文大标题的标准字形。
+    % 长标题折行后行距收紧一点，避免上下太散。
+    {\xiaobiaosong\zihao{2}\linespread{1.25}\selectfont\@title\par}
+
+    % 副标题：三号楷体，前后加短破折号 —— 通报里的惯用写法
+    \pe@ifempty{\pesubtitle}{}{%
+      \vspace{0.35\baselineskip}
+      {\kaishu\zihao{3}\linespread{1.2}\selectfont
+       ——\,\pesubtitle\,——\par}}
+  \end{center}
+
+  % 双分隔线：上 1.2pt、下 0.4pt，间距 1.5pt。
+  % \par + \noindent 是必需的：\rule 是行内盒子，落在段落里会被首行缩进推开。
+  %
+  % \nointerlineskip 同样不能省。两条线各自成段，TeX 会在段间补一个完整的
+  % \baselineskip —— 正文行距 1.46 倍下就是 28pt，两条线被拉开整整一行，
+  % 看着像两道独立的横线而不是公文的双线。\nointerlineskip 把行间胶水掐掉，
+  % 之后的 1.5pt 才是这两条线真正的间距。
+  \vspace{0.8\baselineskip}
+  \par\noindent{\color{prule}\rule{\textwidth}{1.2pt}}%
+  \par\nointerlineskip\vspace{1.5pt}%
+  \noindent{\color{prule}\rule{\textwidth}{0.4pt}}%
+  \par\vspace{0.6\baselineskip}
+  % 文头之后的第一段仍要首行缩进（indentfirst 已保证），不额外处理。
+}
+
+\makeatother

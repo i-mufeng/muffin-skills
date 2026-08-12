@@ -1,0 +1,86 @@
+% ============================================================
+%  paper-export :: 封面
+%
+%  pandoc 默认的 \maketitle 把标题/作者/日期挤在页面上部，日期紧跟作者，
+%  既不像交付文档也不像论文。这里改成独立封面：
+%    顶部留白 ≥15% 页高 → 单位名 → 主标题 → 副标题 → 分隔线
+%    → 信息栏（文档编号/版本/密级/编制人）→ 弹性留白 → 日期 → 底部留白
+%
+%  字段值由 export.sh 生成的临时 cover-vars.tex 用 \def 注入（已做 LaTeX 转义）。
+%  未提供的字段整行省略，不留空行。
+% ============================================================
+
+\makeatletter
+
+% ---------- 字段默认值（export.sh 会覆盖）----------
+\providecommand{\peorg}{}          % 编制单位，显示在标题上方
+\providecommand{\pesubtitle}{}     % 副标题
+\providecommand{\pedocno}{}        % 文档编号
+\providecommand{\peversion}{}      % 版本号
+\providecommand{\pesecurity}{}     % 密级
+\providecommand{\peauthorline}{}   % 编制人
+\providecommand{\pehastoc}{1}      % 是否生成目录（供页码分节判断）
+
+% 字段是否为空。参数传的是宏本身（\pedocno 这样的单 token），
+% 直接 \ifx 与 \@empty 比较即可，不必 \edef —— 值里可能含 \& \% 之类的
+% 转义序列，\edef 展开它们会炸。
+\newcommand{\pe@ifempty}[3]{\ifx#1\@empty#2\else#3\fi}
+
+% 信息栏的一行。刻意不用 tabular：单元格分隔符 & 与换行 \\ 落在未闭合的
+% \ifx 分支里会触发「Incomplete \ifx」—— 对齐扫描会打断条件扫描。
+% 改用两个零宽盒子共用同一个锚点：标签向左伸、值向右伸。
+% 信息栏的锚点比页面中线左移约 6mm，让整组字段在封面上更稳。
+\newcommand{\pe@lbl}[1]{\makebox[4.8em][s]{#1}}
+\newcommand{\pe@inforow}[2]{%
+  \pe@ifempty{#2}{}{%
+    \hspace*{-1.2em}%
+    \makebox[0pt][r]{\pe@lbl{#1}}%
+    \makebox[0pt][l]{\hspace{0.15em}：\hspace{0.35em}#2}%
+    \par\vspace{0.5\baselineskip}}}
+
+% ---------- 封面 ----------
+\renewcommand{\maketitle}{%
+  \begin{titlepage}
+    % 正文为装订留出较宽左边距；封面仍应按纸张物理中心排版。
+    \addtolength{\oddsidemargin}{\dimexpr(\Gm@rmargin-\Gm@lmargin)/2\relax}%
+    \centering
+    \color{pblack}
+    % 顶部留白：主标题绝不贴顶
+    \vspace*{0.15\textheight}
+
+    % 编制单位（可选）
+    \pe@ifempty{\peorg}{}{%
+      {\heiti\zihao{3}\peorg\par}
+      \vspace{0.055\textheight}}
+
+    % 主标题：一号黑体，长标题自动折行且行距放宽
+    {\heiti\zihao{1}\linespread{1.45}\selectfont\@title\par}
+
+    % 副标题（可选）
+    \pe@ifempty{\pesubtitle}{}{%
+      \vspace{1.1\baselineskip}
+      {\heiti\zihao{3}\linespread{1.35}\selectfont\pesubtitle\par}}
+
+    % 分隔线
+    \vspace{0.05\textheight}
+    {\color{prule}\rule{0.58\textwidth}{0.7pt}}
+
+    % 信息栏：文档编号 / 版本 / 密级 / 编制人
+    \vspace{0.055\textheight}
+    {\kaishu\zihao{-3}%
+      \pe@inforow{文\hfill 档\hfill 编\hfill 号}{\pedocno}%
+      \pe@inforow{版\hfill 本\hfill 号}{\peversion}%
+      \pe@inforow{密\hfill 级}{\pesecurity}%
+      \pe@inforow{编\hfill 制\hfill 人}{\peauthorline}%
+      \par}
+
+    % 弹性留白把日期压到页面下部
+    \vfill
+    {\songti\zihao{3}\@date\par}
+    \vspace{0.10\textheight}
+  \end{titlepage}%
+  % 封面不参与页码计数：前置部分从 I 重新开始
+  \setcounter{page}{1}%
+}
+
+\makeatother

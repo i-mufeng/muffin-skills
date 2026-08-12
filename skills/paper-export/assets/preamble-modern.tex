@@ -1,0 +1,68 @@
+% ============================================================
+%  paper-export :: MODERN 预设（默认）
+%
+%  版式**完全等同 report** —— 本文件只在 preamble-report.tex 之后覆盖字体族，
+%  页面、标题层级、页眉页脚、目录一概不动。改版式请改 preamble-report.tex，
+%  两套会同步生效。
+%
+%  字体：阿里巴巴普惠体 3.0（免费商用）。屏幕阅读比宋体清晰，投影和
+%  PDF 缩略图下不糊；代价是长文纸质阅读不如宋体耐看 —— 要交付纸质正式件
+%  用 --style report（宋体），要出公文用 --style brief（仿宋）。
+%
+%  必须用 PostScript 名（AlibabaPuHuiTi_3_55_Regular），不能用 fontconfig
+%  的家族名「Alibaba PuHuiTi 3.0 55 Regular」：tectonic 的字体索引按家族名
+%  查不到多字重字体，会报 "The font ... cannot be found"。
+% ============================================================
+
+% ---------- 字重映射 ----------
+%   \songti（正文）  → 55 Regular
+%   \heiti（标题）   → 85 Bold
+%   \kaishu（封面栏）→ 65 Medium
+% 普惠体没有衬线/楷体的形态差异，层级只能靠字重拉开，所以正文与标题
+% 刻意隔了两档（55 → 85），不用相邻的 65/75。
+\IfFontExistsTF{AlibabaPuHuiTi_3_55_Regular}{%
+  \setCJKfamilyfont{zhsong}{AlibabaPuHuiTi_3_55_Regular}%
+    [BoldFont={AlibabaPuHuiTi_3_85_Bold}]
+  \newfontfamily\pephbody{AlibabaPuHuiTi_3_55_Regular}%
+    [BoldFont={AlibabaPuHuiTi_3_85_Bold}]
+  \renewcommand{\songti}{\pephbody\CJKfamily{zhsong}}
+  \setCJKfamilyfont{zhhei}{AlibabaPuHuiTi_3_85_Bold}%
+    [BoldFont={AlibabaPuHuiTi_3_95_ExtraBold}]
+  \newfontfamily\pephbold{AlibabaPuHuiTi_3_85_Bold}%
+    [BoldFont={AlibabaPuHuiTi_3_95_ExtraBold}]
+  \renewcommand{\heiti}{\pephbold\CJKfamily{zhhei}}
+  \setCJKfamilyfont{zhkai}{AlibabaPuHuiTi_3_65_Medium}
+  \newfontfamily\pephmed{AlibabaPuHuiTi_3_65_Medium}
+  \renewcommand{\kaishu}{\pephmed\CJKfamily{zhkai}}
+  % 全局默认字体族也要换 —— 只改 \songti 不改这里的话，任何没有显式
+  % \songti 的地方（pandoc 生成的 \emph、脚注、目录页码…）还是宋体。
+  \setCJKmainfont{AlibabaPuHuiTi_3_55_Regular}%
+    [BoldFont={AlibabaPuHuiTi_3_85_Bold},
+     ItalicFont={AlibabaPuHuiTi_3_55_Regular}]
+  \setmainfont{AlibabaPuHuiTi_3_55_Regular}%
+    [BoldFont={AlibabaPuHuiTi_3_85_Bold},
+     ItalicFont={AlibabaPuHuiTi_3_55_Regular}]
+}{%
+  \PackageWarning{paper-export}{%
+    未找到阿里巴巴普惠体，modern 预设回退为宋体（等同 report）。^^J
+    安装：把 AlibabaPuHuiTi-3 的 .otf 复制到 ~/Library/Fonts 后 fc-cache -f}%
+}
+
+% ---------- 标题字重 ----------
+% report 的 H2–H5 全走 \heiti，在宋体下靠「衬线 vs 无衬线」就能分辨层级；
+% 换成普惠体后 \heiti 和正文同为无衬线，四级标题会全部塌成同一个 Bold，
+% 只剩字号可辨。把 H4/H5 降到 Medium，重新拉开一档。
+\IfFontExistsTF{AlibabaPuHuiTi_3_65_Medium}{%
+  \setCJKfamilyfont{zhheimed}{AlibabaPuHuiTi_3_65_Medium}
+  \newfontfamily\pephheadingmed{AlibabaPuHuiTi_3_65_Medium}
+  \newcommand{\heitimed}{\pephheadingmed\CJKfamily{zhheimed}}
+  \ctexset{
+    paragraph/format    = \heitimed\zihao{-4}\raggedright,
+    subparagraph/format = \heitimed\zihao{-4}\raggedright,
+  }
+}{}
+
+% ---------- 行距微调 ----------
+% 普惠体字腔比宋体满，1.5 倍略显挤，但也不能像 1.62 那样把一页的容量
+% 砍掉两三行 —— 1.52 是实测下密度与呼吸感的平衡点。
+\linespread{1.52}\selectfont

@@ -1,0 +1,14 @@
+% paper-export :: 经 pandoc --include-before-body 注入
+% 位置在 \maketitle 之后、\tableofcontents 之前。
+%
+% 职责：结束封面节，进入前置节。
+%   有目录 → 前置节用大写罗马页码，页眉只留文档标题；
+%            正文节的切换（\pagenumbering{arabic} + fancy）由 preamble 里
+%            打过补丁的 \tableofcontents 在排完目录后完成。
+%   无目录 → 直接进入正文节。
+\clearpage
+\ifnum\pehastoc=1\relax
+  \pagenumbering{Roman}\pagestyle{pefront}\thispagestyle{pefront}
+\else
+  \pagenumbering{arabic}\pagestyle{fancy}\thispagestyle{fancy}
+\fi

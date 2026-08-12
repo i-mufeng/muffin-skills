@@ -1,0 +1,45 @@
+% ============================================================
+%  paper-export :: BRIEF 预设的落款（经 --include-after-body 注入）
+%
+%  通报/纪要的署名在正文末尾右下角，不在封面：
+%
+%              微航科技有限公司
+%              编制：禹贵祥
+%              2026 年 8 月 5 日
+%
+%  距右边界留 4 个字宽 —— 公文里落款不顶到版心右边缘。
+%  三行都可缺省；全缺省时整块不输出，不留空白。
+% ============================================================
+
+\makeatletter
+
+\providecommand{\peorg}{}
+\providecommand{\peauthorline}{}
+\providecommand{\pesignoffdate}{}
+
+\newcommand{\pe@sig@ifempty}[3]{\ifx#1\@empty#2\else#3\fi}
+
+% 三个字段全空就整块跳过
+\newif\ifpe@hassig \pe@hassigfalse
+\ifx\peorg\@empty\else\pe@hassigtrue\fi
+\ifx\peauthorline\@empty\else\pe@hassigtrue\fi
+\ifx\pesignoffdate\@empty\else\pe@hassigtrue\fi
+
+\ifpe@hassig
+  % 可压缩的间距：正文离页底还宽裕时留足 1.6 行，页面紧张时一路压到 0.2 行，
+  % 尽量让落款跟正文同页 —— 固定值会为了三行落款白开一页。
+  \par\vspace{1.6\baselineskip plus 0pt minus 1.4\baselineskip}
+  % flushright 会重置 \parindent，落款不需要缩进；右侧 4em 由 \hspace 补
+  \begingroup
+    \fangsong\zihao{3}\linespread{1.35}\selectfont
+    \begin{flushright}
+      % \hspace* 而非 \hspace：行尾的普通 glue 会在断行处被丢弃，
+      % 带星号的版本不可丢弃，右侧 4 字宽才真的留得住。
+      \pe@sig@ifempty{\peorg}{}{\peorg\hspace*{4em}\par}
+      \pe@sig@ifempty{\peauthorline}{}{编制：\peauthorline\hspace*{4em}\par}
+      \pe@sig@ifempty{\pesignoffdate}{}{\pesignoffdate\hspace*{4em}\par}
+    \end{flushright}
+  \endgroup
+\fi
+
+\makeatother

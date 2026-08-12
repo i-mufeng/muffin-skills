@@ -1,0 +1,13 @@
+# Python
+__pycache__/
+*.py[cod]
+
+# macOS
+.DS_Store
+
+# 导出产物 / 排查中间文件
+*.pdf
+*.tex
+!skills/paper-export/assets/*.tex
+tmp/
+out/

@@ -1,0 +1,262 @@
+% ============================================================
+%  paper-export :: 公共 preamble（gb / report 两种预设共用）
+%
+%  职责：字体、符号兜底、表格、列表、代码块、引用块、分页质量。
+%  版式相关（页面尺寸、标题层级、页眉页脚、目录）在 preamble-<style>.tex。
+%
+%  注入点：pandoc --include-in-header，位于所有 \usepackage 之后，
+%          但在 hyperref 之前 —— 因此这里不能调用 \hypersetup。
+% ============================================================
+
+% ---------- 0. 全文黑色 ----------
+% 硬性要求：除图片与极浅的底色外，一切文字纯黑。
+% 链接颜色由 export.sh 通过 -V linkcolor=black 等传入（hyperref 加载晚于此处）。
+\usepackage{xcolor}
+\definecolor{pblack}{HTML}{000000}
+\definecolor{prule}{HTML}{000000}       % 表格线与页眉线
+\definecolor{pcodebg}{HTML}{F7F7F8}     % 代码块底色（唯一允许的非黑元素之一）
+\definecolor{pcodeframe}{HTML}{E3E3E6}
+\definecolor{pquotebar}{HTML}{BFBFBF}
+\definecolor{ptablehead}{HTML}{F2F2F2}
+\definecolor{ptablesoft}{HTML}{D9D9D9}
+\AtBeginDocument{\color{pblack}}
+
+% ---------- 1. 中文字体族 ----------
+% ctex 在 macOS 上默认把 \heiti 落到 STXihei（华文细黑）：笔画细、字面小，
+% 三号标题看上去反而比小四正文还弱，层级感全无。显式换成中等字重的黑体。
+% \kaishu 供封面信息栏使用。
+\setCJKfamilyfont{zhhei}{Heiti SC Medium}[BoldFont=Heiti SC Medium]
+\newfontfamily\peheiti{Heiti SC Medium}[BoldFont=Heiti SC Medium]
+\renewcommand{\heiti}{\peheiti\CJKfamily{zhhei}}
+\setCJKfamilyfont{zhsong}{Songti SC}
+\newfontfamily\pesongti{Songti SC}
+\renewcommand{\songti}{\pesongti\CJKfamily{zhsong}}
+\setmainfont{Songti SC}
+% 字体命令同时切换中西文，避免标题或封面里的英文突然落到另一套西文字体。
+\IfFontExistsTF{Kaiti SC}{%
+  \setCJKfamilyfont{zhkai}{Kaiti SC}
+  \newfontfamily\pekaishu{Kaiti SC}
+  \renewcommand{\kaishu}{\pekaishu\CJKfamily{zhkai}}
+}{%
+  \renewcommand{\kaishu}{\pesongti\CJKfamily{zhsong}}
+}
+
+% 中西文之间自动留出细气隙：中文技术文档里「AI 拆解」「H5 前台」这类混排极多，
+% 不留气隙会粘连，留全角又太散。
+\xeCJKsetup{xCJKecglue={\hskip 0.08em plus 0.03em minus 0.02em}}
+
+% ---------- 2. 符号字形兜底 ----------
+% 正文字体（宋体 / Times）不含 Box Drawing 与几何符号，缺字形会静默丢字。
+% Menlo 出自 DejaVu 血统，U+2500–257F、U+25A0–25FF、U+2600–26FF 覆盖完整，
+% 用它兜底这些字符，视觉上与正文差异极小。
+\usepackage{newunicodechar}
+% 缩放必须与 \setmonofont 完全一致，否则这些符号在代码块里与相邻等宽字符的
+% 字身宽对不上，横线会出现缝隙、框线接不拢。
+%
+% Maple Mono NF CN 是 Nerd Font 版，Box Drawing / 几何符号 / 箭头覆盖比 Menlo
+% 更全，且与正文等宽字体同源，混排时字重和字面一致。没装则回退 Menlo。
+\IfFontExistsTF{Maple Mono NF CN}
+  {\newfontfamily\symbolfont{Maple Mono NF CN}[Scale=0.90]}
+  {\newfontfamily\symbolfont{Menlo}[Scale=0.85]}
+\makeatletter
+% 替换体必须用码点 \char"XXXX 而非字符本身：newunicodechar 定义的是
+% active character，在自己的替换体里再写一遍该字符会自指，导致字形丢失。
+\def\pe@sym#1#2{\newunicodechar{#1}{{\symbolfont\char"#2\relax}}}
+% 制表符（ASCII 框图）
+\pe@sym{─}{2500}\pe@sym{━}{2501}\pe@sym{│}{2502}\pe@sym{┃}{2503}
+\pe@sym{┌}{250C}\pe@sym{┐}{2510}\pe@sym{└}{2514}\pe@sym{┘}{2518}
+\pe@sym{├}{251C}\pe@sym{┤}{2524}\pe@sym{┬}{252C}\pe@sym{┴}{2534}\pe@sym{┼}{253C}
+\pe@sym{═}{2550}\pe@sym{║}{2551}\pe@sym{╔}{2554}\pe@sym{╗}{2557}
+\pe@sym{╚}{255A}\pe@sym{╝}{255D}
+% 几何与标记符号
+\pe@sym{■}{25A0}\pe@sym{□}{25A1}\pe@sym{●}{25CF}\pe@sym{○}{25CB}
+\pe@sym{◆}{25C6}\pe@sym{◇}{25C7}\pe@sym{▲}{25B2}\pe@sym{▼}{25BC}
+\pe@sym{►}{25BA}\pe@sym{◄}{25C4}\pe@sym{★}{2605}\pe@sym{☆}{2606}
+\pe@sym{☐}{2610}\pe@sym{☑}{2611}\pe@sym{✓}{2713}\pe@sym{✔}{2714}
+\pe@sym{✗}{2717}\pe@sym{✘}{2718}\pe@sym{⚠}{26A0}
+% 箭头
+\pe@sym{→}{2192}\pe@sym{←}{2190}\pe@sym{↑}{2191}\pe@sym{↓}{2193}
+\pe@sym{⇒}{21D2}\pe@sym{⇐}{21D0}\pe@sym{↔}{2194}
+\makeatother
+
+% 带圈数字 ①②③，供三级有序列表使用。
+% 注意 Songti SC **没有** U+2460 区段（实测 fc-list :charset=2460 里没有它），
+% 直接 \songti\char"2460 会排出一个空方框；Heiti SC 才有。
+% 用 \newfontfamily 显式绑定，绕开 xeCJK 的字符分类。
+\newfontfamily\pecirclefont{Heiti SC}
+\newcommand{\pecircled}[1]{{\pecirclefont\char\numexpr"2460+#1-1\relax}}
+
+% 制表符（Box Drawing / Block Elements）声明为非 CJK 字符。
+% 上面那套 \newunicodechar 是 active character，而 verbatim 环境里所有字符都是
+% catcode 12，active 不展开 —— 代码块里的框线根本走不到兜底，会落到
+% \setCJKmonofont（宋体，全角宽）上，于是 1 格宽的横线被排进 2 格，
+% 框线断成一截一截。声明成 Default 类后它们改走 Menlo，宽度恰好 1 格。
+\xeCJKDeclareCharClass{Default}{"2500 -> "259F}
+
+% ---------- 3. 代码块 / ASCII 框图 ----------
+% 拉丁等宽用 Menlo；CJK 等宽必须恰好是拉丁等宽的 2 倍宽，
+% 终端里画的框图（中文占 2 格）才能在 PDF 中保持对齐。
+% Maple Mono CN 一套字体同时供拉丁与 CJK，中文字身宽恰好是拉丁的 2 倍 ——
+% 这正是终端画 ASCII 框图的前提，比「Menlo 0.85 + 宋体 1.02」这种靠缩放
+% 凑出来的 2:1 可靠得多（后者的比例只在特定字号下准确）。
+% 没装则退回原来的拼接方案。
+\IfFontExistsTF{Maple Mono CN}
+  {\setmonofont{Maple Mono CN}[Scale=0.90]
+   \setCJKmonofont{Maple Mono CN}[Scale=0.90]}
+  {\setmonofont{Menlo}[Scale=0.85]
+   \setCJKmonofont{Songti SC}[Scale=1.02]}
+
+\usepackage{fvextra}
+\fvset{breaklines=true,breakanywhere=true,fontsize=\zihao{5}}
+
+% pandoc 对「无语言标注」的代码块（裸围栏，技术文档里的 ASCII 框图几乎都是
+% 这一类）生成原生 verbatim，既不受 \fvset 控制也不会断行，超宽必然溢出版心。
+% 用 fancyvrb 接管：统一五号字，且只在空格处断行——框图不会被从中间劈开。
+\RecustomVerbatimEnvironment{verbatim}{Verbatim}%
+  {fontsize=\zihao{5},breaklines=true,breakanywhere=false,xleftmargin=0pt}
+
+% 带语言标注的代码块走 pandoc 的 Highlighting 环境，它用 commandchars 把每个词
+% 包进 \NormalTok{} 之类的宏里。fvextra 默认不在宏参数内部断行，一条无空格的
+% 长 URL 会整条溢出版心。重新定义并显式打开 breakanywhere。
+% 必须在 \AtBeginDocument 里做 —— pandoc 的定义写在 preamble 更靠后的位置。
+\usepackage{mdframed}
+% 注意 \makeatletter：\AtBeginDocument 在「读到」时就把 token 存下来，
+% 里面的 \@ifundefined 若在 @ 为普通字符时读入，会被拆成 \@ + ifundefined，
+% 在 \begin{document} 处报「You can't use \spacefactor in vertical mode」。
+\makeatletter
+\AtBeginDocument{%
+  \DefineVerbatimEnvironment{Highlighting}{Verbatim}%
+    {commandchars=\\\{\},breaklines=true,breakanywhere=true,fontsize=\zihao{5}}%
+  % 代码块外框：极浅灰底 + 细边框，取代 pandoc 默认的无框 snugshade
+  \@ifundefined{Shaded}{}{%
+    \renewenvironment{Shaded}%
+      {\begin{mdframed}[backgroundcolor=pcodebg,linecolor=pcodeframe,
+                        linewidth=0.4pt,roundcorner=2pt,
+                        innerleftmargin=8pt,innerrightmargin=8pt,
+                        innertopmargin=5pt,innerbottommargin=5pt,
+                        skipabove=7pt,skipbelow=7pt]}%
+      {\end{mdframed}}}%
+}
+\makeatother
+% 代码块内不继承正文的 1.5 倍行距
+\AtBeginEnvironment{Verbatim}{\linespread{1.0}\selectfont}
+
+% ---------- 4. 表格 ----------
+% 规范：三线表，无竖线；表格居中；五号字；行距 1.0；跨页重复表头。
+% 列宽由 assets/tablefit.lua 按内容重算后写进 AST，此处只管观感。
+\usepackage{etoolbox}
+\usepackage{array}
+\usepackage{booktabs}
+\usepackage{longtable}
+\usepackage{ragged2e}
+% colortbl 必须在 \arrayrulecolor 之前加载
+\usepackage{colortbl}
+
+% 三线表线宽：顶/底线与表头下线是「结构线」，纯黑；
+% 行间分界线是「阅读辅助线」，必须细而浅 —— 和结构线一样粗一样黑的话，
+% 整张表会退化成网格，比不画还吵。
+\setlength{\heavyrulewidth}{0.9pt}
+\setlength{\lightrulewidth}{0.4pt}
+\setlength{\cmidrulewidth}{0.3pt}
+\arrayrulecolor{prule}
+
+% 行间分界线：由 tablefit.lua 在「有单元格折行」的表里逐行插入
+% \noalign{\perowrule}。线宽与颜色集中在这里调。
+\definecolor{prowrule}{HTML}{D0D0D0}
+\newcommand{\perowrule}{{\color{prowrule}\hrule height 0.3pt}}
+
+% 单元格上下留白：靠 \arraystretch 而非行距，避免多行单元格被撑得过高
+\renewcommand{\arraystretch}{1.18}
+\setlength{\tabcolsep}{5pt}
+
+% longtable 水平居中（pandoc 生成的 @{} 会让它默认贴左）
+\setlength{\LTleft}{0pt plus 1fill}
+\setlength{\LTright}{0pt plus 1fill}
+\setlength{\LTpre}{8pt}
+\setlength{\LTpost}{8pt}
+
+% 表格整体五号字、行距 1.0：正文的 1.5 倍行距套进表格会让每一行都过高
+\AtBeginEnvironment{longtable}{\zihao{5}\linespread{1.05}\selectfont}
+\AtBeginEnvironment{tabular}{\zihao{5}\linespread{1.05}\selectfont}
+
+% ---------- 5. 列表 ----------
+% 规范：无序 • / – / · ；有序 1. / (1) / ① ；缩进与正文首行对齐；项间紧凑。
+\usepackage{enumitem}
+% 一级列表的标记与正文首行缩进（2em）对齐 —— 标记顶在版心左边缘会让列表
+% 看上去比正文还往外凸。二三级各再进 2em。
+% labelwidth 显式给出，不靠 enumitem 从 leftmargin 反推 —— 反推值会把标记
+% 与文字之间撑出一大段空白。三个量的关系：
+%   labelindent(标记左边缘) + labelwidth + labelsep = leftmargin(文字左边缘)
+\setlist{topsep=3pt,partopsep=0pt,parsep=0pt,itemsep=2pt,align=left}
+\setlist[itemize,1]{label=\textbullet,
+                    labelindent=2em,labelwidth=0.7em,labelsep=0.4em,leftmargin=3.1em}
+\setlist[itemize,2]{label=\textendash,
+                    labelindent=0em,labelwidth=0.7em,labelsep=0.4em,leftmargin=1.6em}
+\setlist[itemize,3]{label=\textperiodcentered,
+                    labelindent=0em,labelwidth=0.7em,labelsep=0.4em,leftmargin=1.6em}
+\setlist[enumerate,1]{label=\arabic*.,
+                    labelindent=2em,labelwidth=1.1em,labelsep=0.4em,leftmargin=3.5em}
+\setlist[enumerate,2]{label=(\arabic*),
+                    labelindent=0em,labelwidth=1.6em,labelsep=0.4em,leftmargin=2.2em}
+\setlist[enumerate,3]{label=\pecircled{\value{enumiii}},
+                    labelindent=0em,labelwidth=1.1em,labelsep=0.4em,leftmargin=1.8em}
+% pandoc 的 tightlist 会把项间距清零；这里保留一点点，避免中文行距下挤成一坨
+\providecommand{\tightlist}{\setlength{\itemsep}{1pt}\setlength{\parskip}{0pt}}
+
+% 列表内不再首行缩进（正文缩进 2em 已由 leftmargin 承担）
+\AtBeginEnvironment{itemize}{\setlength{\parindent}{0pt}}
+\AtBeginEnvironment{enumerate}{\setlength{\parindent}{0pt}}
+\AtBeginEnvironment{description}{\setlength{\parindent}{0pt}}
+
+% ---------- 6. 引用块 ----------
+% Markdown 的 > 引用：左侧竖线 + 极浅灰底
+\renewenvironment{quote}{%
+  \begin{mdframed}[linewidth=3pt,linecolor=pquotebar,
+                   topline=false,bottomline=false,rightline=false,
+                   backgroundcolor=pcodebg,
+                   innerleftmargin=10pt,innerrightmargin=10pt,
+                   innertopmargin=6pt,innerbottommargin=6pt,
+                   skipabove=6pt,skipbelow=6pt]\setlength{\parindent}{0pt}}%
+  {\end{mdframed}}
+
+% ---------- 7. 图片 ----------
+% 超出版心的图自动缩到版心宽；居中；不产生「Overfull \hbox」
+\usepackage{graphicx}
+\setkeys{Gin}{keepaspectratio}
+\makeatletter
+\def\maxwidth{\ifdim\Gin@nat@width>\linewidth\linewidth\else\Gin@nat@width\fi}
+\makeatother
+
+% ---------- 8. 断词与溢出 ----------
+% 注：行内代码（\texttt）的断行由 sanitize.lua 在 AST 层处理，不在这里
+% 重定义 \texttt —— 那样会把 \penalty 喂给 pandoc 生成的转义序列
+% （如 ^ → \^{}），导致 "Missing number" 编译中断。
+\sloppy
+\emergencystretch=3em
+\hbadness=10000  % 抑制 underfull hbox 噪音警告
+
+% ---------- 9. 分页质量 ----------
+% 孤行/寡行：段落首行不许单独留在页底，末行不许单独跑到下页
+\widowpenalty=10000
+\clubpenalty=10000
+\displaywidowpenalty=10000
+\brokenpenalty=10000
+% 标题后至少要能容下 3 行正文，否则整个标题推到下一页 ——
+% 杜绝「标题孤零零挂在页面最后一行」
+\usepackage{needspace}
+\pretocmd{\section}{\needspace{4\baselineskip}}{}{}
+\pretocmd{\subsection}{\needspace{4.5\baselineskip}}{}{}
+\pretocmd{\subsubsection}{\needspace{4\baselineskip}}{}{}
+\pretocmd{\paragraph}{\needspace{3.5\baselineskip}}{}{}
+% 标题后紧跟表格是中文技术文档的常态。LaTeX 只知道「标题后有内容」，
+% 于是「（六）术语说明」留在页尾、表格整个甩到下一页。给 longtable 也要一段
+% 起始空间，标题与表头才会待在同一页。
+\BeforeBeginEnvironment{longtable}{\needspace{4\baselineskip}}
+\usepackage{float}
+
+% ---------- 10. 目录观感 ----------
+% 默认点线过疏（\@dotsep=4.5mu），中文目录看上去像断续的省略号；收紧到 1.8。
+% 各级条目的字体与缩进在 preamble-<style>.tex 里按预设分别设定。
+\makeatletter
+\renewcommand{\@dotsep}{1.8}
+\makeatother

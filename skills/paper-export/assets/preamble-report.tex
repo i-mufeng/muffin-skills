@@ -1,0 +1,170 @@
+% ============================================================
+%  paper-export :: REPORT 预设（技术报告 / 需求文档 / 方案书 / 交付文档）
+%  配合: -V documentclass=ctexart
+%
+%  层级约定：技术文档里 H1 是「篇章名」，H2 才是规范意义上的一级标题
+%  （作者写的是「## 一、概述」），因此整体上移一档。gb 预设不做这个偏移。
+% ============================================================
+
+% ---------- 1. 页面 ----------
+% A4；左侧多留 0.46cm 装订线；页眉距边界 1.5cm，页脚距边界约 1.75cm
+\usepackage{geometry}
+\geometry{a4paper,
+          top=2.54cm,bottom=2.54cm,left=3.0cm,right=2.54cm,
+          headheight=14pt,headsep=0.55cm,footskip=1.05cm}
+
+\xeCJKsetup{CJKspace=true}
+
+% ---------- 2. 正文 ----------
+% pandoc 默认模板会把 \parindent 清零，用 AtBeginDocument 抢回来
+\usepackage{indentfirst}
+\AtBeginDocument{\setlength{\parindent}{2em}}
+\linespread{1.5}\selectfont
+\setlength{\parskip}{0pt plus 1pt}
+
+% ---------- 3. 标题层级 ----------
+%   H1 → 三号黑体居中，另起一页（分页由 pagebreak.lua 负责）
+%   H2 → 小三黑体左对齐   （规范意义上的一级标题）
+%   H3 → 13pt 黑体
+%   H4 → 小四黑体
+%   H5 → 小四宋体加粗
+% 字号刻意逐级拉开，避免 H3/H4 与正文同为小四而层级不可辨。
+\ctexset{
+  section/format           = \heiti\zihao{3}\centering,
+  section/beforeskip       = 0pt,
+  section/afterskip        = 18pt,
+  subsection/format        = \heiti\zihao{-3}\raggedright,
+  subsection/beforeskip    = 18pt,
+  subsection/afterskip     = 12pt,
+  subsubsection/format     = \heiti\fontsize{13bp}{18bp}\selectfont\raggedright,
+  subsubsection/beforeskip = 12pt,
+  subsubsection/afterskip  = 6pt,
+  paragraph/format         = \heiti\zihao{-4}\raggedright,
+  paragraph/runin          = false,
+  paragraph/beforeskip     = 9pt,
+  paragraph/afterskip      = 3pt,
+  subparagraph/format      = \songti\bfseries\zihao{-4}\raggedright,
+  subparagraph/runin       = false,
+  subparagraph/beforeskip  = 6pt,
+  subparagraph/afterskip   = 3pt,
+}
+
+% ---------- 4. 目录 ----------
+\renewcommand{\contentsname}{目\hspace{1em}录}
+
+\makeatletter
+% 各级条目的字体、缩进与页码宽度。手写重定义而非引入 tocloft/titletoc：
+% 后两者与 ctex 的 \ctexset 争夺同一批内部宏，版本一变就炸。
+\renewcommand*\l@section[2]{%
+  \vskip 4pt plus 1pt
+  {\heiti\zihao{-4}\@dottedtocline{1}{0em}{1.8em}{#1}{#2}}}
+\renewcommand*\l@subsection[2]{%
+  \vskip 2pt plus 1pt
+  {\songti\zihao{-4}\@dottedtocline{2}{1.6em}{2.2em}{#1}{#2}}}
+\renewcommand*\l@subsubsection[2]{%
+  {\songti\zihao{5}\@dottedtocline{3}{3.6em}{3.0em}{#1}{#2}}}
+\renewcommand*\l@paragraph[2]{%
+  {\songti\zihao{5}\@dottedtocline{4}{6.4em}{3.6em}{#1}{#2}}}
+% 页码栏宽一点，两位数以上页码不会顶到点线
+\renewcommand{\@pnumwidth}{2.2em}
+\renewcommand{\@tocrmarg}{2.8em}
+
+% 目录排完后切回正文页码与页眉样式（正文从阿拉伯数字 1 重新开始）。
+%
+% 关键在 \aftergroup。pandoc 的 LaTeX 模板把目录整段包在一对花括号里
+% （为了让 \hypersetup{linkcolor=toccolor} 只作用于目录）：
+%     {\hypersetup{...}\setcounter{tocdepth}{N}\tableofcontents}
+% 而 \pagestyle 做的是局部 \let，出了这个分组就弹回 pefront —— 正文页会一直
+% 顶着「前置」的页眉、右侧永远没有章节名。偏偏 \pagenumbering 用的是 \gdef，
+% 页码看上去完全正常，于是这个 bug 表现为「页码对、页眉不对」，极难察觉。
+%
+% 用 \globaldefs=1 强行全局化是行不通的：它会把 \protected@write 内部那些
+% 本该局部的 \let\protect... 一并全局化，之后写进 .aux 的控制序列会集体丢掉
+% 反斜杠，下一轮编译直接报 "Missing \begin{document}"。
+% \aftergroup 把切换推迟到分组结束之后、正文开始之前执行，干净且无副作用。
+\AtBeginDocument{%
+  \let\pe@origtoc\tableofcontents
+  \renewcommand{\tableofcontents}{%
+    \pe@origtoc
+    \aftergroup\pe@beginbody}}
+\newcommand{\pe@beginbody}{%
+  \clearpage\pagenumbering{arabic}\pagestyle{fancy}}
+\makeatother
+
+% ---------- 5. 页眉页脚 ----------
+% 三节：封面（无页眉页脚、不计页码）→ 前置（罗马页码）→ 正文（阿拉伯从 1）
+\usepackage{fancyhdr}
+\usepackage{lastpage}
+
+\makeatletter
+% \maketitle 会清空 \@title，页眉要用必须提前抄一份，并截断过长的标题
+\providecommand\pe@title{}
+\AtBeginDocument{\global\let\pe@title\@title}
+
+% 页眉右侧显示「当前一级标题」。文档只有一个 H1 时它会被 title-dedup 摘掉，
+% 此时正文的一级标题实际是 H2 —— export.sh 通过 \peheadlevel 告知该取哪一级。
+%
+% \pe@setmarks 必须在每个 \fancypagestyle 的**体内**调用：fancyhdr 的 \ps@fancy
+% 在切换页面样式时会把 \sectionmark / \subsectionmark 重置成自己的版本
+% （后者用的是 \markright，喂 \rightmark 而不是 \leftmark），写在 preamble 里
+% 的重定义会被它悄悄盖掉，页眉右侧就永远是空的。
+\providecommand{\peheadlevel}{1}
+\newcommand{\pe@setmarks}{%
+  \renewcommand{\sectionmark}[1]{\ifnum\peheadlevel=1\relax\markboth{##1}{}\fi}%
+  \renewcommand{\subsectionmark}[1]{\ifnum\peheadlevel=2\relax\markboth{##1}{}\fi}}
+
+% 页脚页码：默认「- N -」，--footer-total 时改为「第 N 页 共 M 页」
+\providecommand{\pefootertotal}{0}
+\newcommand{\pe@pagenum}{%
+  \ifnum\pefootertotal=1\relax
+    第~\thepage~页\quad 共~\pageref*{LastPage}~页%
+  \else
+    -~\thepage~-%
+  \fi}
+
+\newcommand{\pe@hf}{\songti\zihao{-5}\color{pblack}}
+
+% 正文
+\fancypagestyle{fancy}{%
+  \pe@setmarks
+  \fancyhf{}%
+  \fancyhead[L]{\pe@hf\pe@title}%
+  \fancyhead[R]{\pe@hf\leftmark}%
+  \fancyfoot[C]{\pe@hf\pe@pagenum}%
+  \renewcommand{\headrulewidth}{0.6pt}%
+  \renewcommand{\footrulewidth}{0pt}}
+% 前置（目录）：页眉只留文档标题，页码罗马数字
+% 标题居中而不是像正文页那样靠左：正文页左侧标题是为了给右侧的章节名让位，
+% 目录页没有章节名，再靠左就成了孤零零挂在左上角。docx 侧的 header2.xml
+% 与 gb 预设同样是居中，三处必须一致。
+\fancypagestyle{pefront}{%
+  \fancyhf{}%
+  \fancyhead[C]{\pe@hf\pe@title}%
+  \fancyfoot[C]{\pe@hf\thepage}%
+  \renewcommand{\headrulewidth}{0.6pt}%
+  \renewcommand{\footrulewidth}{0pt}}
+% 封面
+\fancypagestyle{empty}{\fancyhf{}%
+  \renewcommand{\headrulewidth}{0pt}\renewcommand{\footrulewidth}{0pt}}
+% article 的 \section* 之类会临时切到 plain，别让页码跑到页面正下方之外
+\fancypagestyle{plain}{%
+  \fancyhf{}%
+  \fancyfoot[C]{\pe@hf\pe@pagenum}%
+  \renewcommand{\headrulewidth}{0pt}\renewcommand{\footrulewidth}{0pt}}
+\makeatother
+
+% \headrule 必须自己判 \headrulewidth —— 直接画死线会让 \fancypagestyle{empty}
+% 里的 headrulewidth=0pt 失效，封面顶端就会漏出一条页眉线。
+\renewcommand{\headrule}{%
+  \ifdim\headrulewidth>0pt\relax
+    {\color{prule}\hrule height \headrulewidth}%
+  \fi}
+\pagestyle{empty}
+
+% ---------- 6. 图表题注 ----------
+\usepackage{caption}
+\DeclareCaptionFont{pcap}{\heiti\zihao{5}\color{pblack}}
+\captionsetup{font=pcap,labelsep=quad,skip=6pt,justification=centering,
+              singlelinecheck=true}
+\captionsetup[figure]{position=bottom}
+\captionsetup[table]{position=top}

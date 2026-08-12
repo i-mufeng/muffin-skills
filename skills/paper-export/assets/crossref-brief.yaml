@@ -1,0 +1,19 @@
+# pandoc-crossref 配置 :: BRIEF 预设（图 1 / 表 2，全文连续编号，与 report 一致）
+figureTitle: "图"
+tableTitle: "表"
+listingTitle: "代码"
+figPrefix: ["图"]
+tblPrefix: ["表"]
+eqnPrefix: ["式"]
+lstPrefix: ["代码"]
+secPrefix: ["第", "节"]
+titleDelim: "　"
+# 全文连续编号，不按章
+chapters: false
+rangeDelim: "~"
+pairDelim: "、"
+lastDelim: "和"
+refDelim: "、"
+codeBlockCaptions: true
+linkReferences: true
+nameInLink: true
