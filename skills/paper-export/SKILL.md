@@ -304,6 +304,25 @@ PostScript 名、.ttc 里的非首 face 取不到）见 `references/typography.m
 - **语义标签只认 `[【待确认】]{.mark-confirm}` 这种带类的写法**。正文里当普通
   词语用的「【待确认】」PDF 与 Word 两侧都不着色。
 
+## 改这个 skill 之前
+
+跑 `scripts/test.sh`（约 2 分钟，108 条断言）。**每一条都对应一个曾经真实
+发生过的故障** —— 改 preamble / lua filter / 后处理之前先跑一遍留基线，改完
+再跑一遍，「只改行为、不改排版结果」这句话才有据可查。
+
+```bash
+scripts/test.sh              # 全跑，含 PDF 编译
+scripts/test.sh --fast       # 跳过 PDF 编译，约 7 秒
+scripts/test.sh --render     # 额外验证 soffice 渲染不损坏
+scripts/test.sh -k lint      # 只跑一组：syntax chars args lint filters docx pdf render
+scripts/test.sh --keep -v    # 保留产物、打印每条通过项
+```
+
+覆盖：脚本语法（bash 3.2 / python / lua）、两份 `char_width` 逐码位一致、
+参数校验、md-lint 定级与 pandoc 实际 AST 对齐、表格线型矩阵、两侧列宽一致、
+emoji 映射、`preamble` 声明的 45 个符号确有字形、分页守卫、语义标签范围、
+Word 分节页眉页脚、后处理幂等、五套预设 × PDF/Word 产出。
+
 ## 出问题时
 
 1. `scripts/doctor.sh` 先自检工具链与字体。

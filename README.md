@@ -38,14 +38,16 @@ mv ~/.claude/skills/paper-export ~/.claude/skills/paper-export.bak
 ```bash
 skills/paper-export/scripts/doctor.sh              # 工具链与字体自检
 skills/paper-export/scripts/export.sh 文档.md --to both
+skills/paper-export/scripts/test.sh                # 回归测试（108 条断言）
 ```
 
 详见 [skills/paper-export/SKILL.md](skills/paper-export/SKILL.md)。
 
 ## 约定
 
-- 改 skill 前先跑一遍导出留基线产物，改完对比 PDF 文本与 docx 部件，
-  确认「只改行为、不改排版结果」。
+- **改 skill 之前先跑 `scripts/test.sh` 留基线，改完再跑一遍。**
+  每条断言都对应一个曾经真实发生过的故障；`--fast` 跳过 PDF 编译约 7 秒，
+  全量约 2 分钟。提交前跑全量。
 - 脚本以 macOS 自带的 **bash 3.2** 为兼容底线（`/bin/bash` 就是它）。
   注意两个坑：`set -u` 下空数组不能 `"${arr[@]}"` 展开；
   `$( )` 里不能嵌 heredoc（语法阶段就报 unexpected EOF）。

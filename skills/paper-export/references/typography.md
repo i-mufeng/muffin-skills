@@ -191,6 +191,7 @@ assets/
 scripts/
   export.sh              导出入口
   doctor.sh              依赖与字体自检
+  test.sh                回归测试（改这里任何文件之前先跑一遍留基线）
   md-lint.py             Markdown 体检
   build-reference-docx.py 重新生成 Word 母版（改版式后需重跑）
   docx-postprocess.py    Word 分节、页眉页脚、页码、表格线型、语义标签着色

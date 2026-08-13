@@ -135,6 +135,7 @@ while [[ $# -gt 0 ]]; do
     --no-lint)     LINT=0; shift ;;
     --strict-lint) STRICT_LINT=1; shift ;;
     --keep-tex)    KEEP_TEX=1; shift ;;
+    --verbose)     VERBOSE=1; shift ;;
     -h|--help)     usage; exit 0 ;;
     -*)            echo "未知选项: $1" >&2; usage; exit 2 ;;
     *)             INPUTS+=("$1"); shift ;;

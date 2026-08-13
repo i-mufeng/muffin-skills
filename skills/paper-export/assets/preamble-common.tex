@@ -58,10 +58,19 @@
 \IfFontExistsTF{Maple Mono NF CN}
   {\newfontfamily\symbolfont{Maple Mono NF CN}[Scale=0.90]}
   {\newfontfamily\symbolfont{Menlo}[Scale=0.85]}
+% 上面那句「覆盖比 Menlo 更全」有两个例外：Maple Mono NF CN Regular 里
+% ★ U+2605 与 ☆ U+2606 **没有字形**，落到 symbolfont 就静默丢字
+% （tectonic 只报一行 Missing character，PDF 里那个位置是空的）。
+% 把这两个字符单独指到 Menlo —— 逐个编译验证过，其余 43 个符号 Maple 都有。
+\IfFontExistsTF{Menlo}
+  {\newfontfamily\symbolaltfont{Menlo}[Scale=0.85]}
+  {\let\symbolaltfont\symbolfont}
 \makeatletter
 % 替换体必须用码点 \char"XXXX 而非字符本身：newunicodechar 定义的是
 % active character，在自己的替换体里再写一遍该字符会自指，导致字形丢失。
 \def\pe@sym#1#2{\newunicodechar{#1}{{\symbolfont\char"#2\relax}}}
+% Maple 缺字形的那几个走备用字体
+\def\pe@symalt#1#2{\newunicodechar{#1}{{\symbolaltfont\char"#2\relax}}}
 % 制表符（ASCII 框图）
 \pe@sym{─}{2500}\pe@sym{━}{2501}\pe@sym{│}{2502}\pe@sym{┃}{2503}
 \pe@sym{┌}{250C}\pe@sym{┐}{2510}\pe@sym{└}{2514}\pe@sym{┘}{2518}
@@ -71,7 +80,7 @@
 % 几何与标记符号
 \pe@sym{■}{25A0}\pe@sym{□}{25A1}\pe@sym{●}{25CF}\pe@sym{○}{25CB}
 \pe@sym{◆}{25C6}\pe@sym{◇}{25C7}\pe@sym{▲}{25B2}\pe@sym{▼}{25BC}
-\pe@sym{►}{25BA}\pe@sym{◄}{25C4}\pe@sym{★}{2605}\pe@sym{☆}{2606}
+\pe@sym{►}{25BA}\pe@sym{◄}{25C4}\pe@symalt{★}{2605}\pe@symalt{☆}{2606}
 \pe@sym{☐}{2610}\pe@sym{☑}{2611}\pe@sym{✓}{2713}\pe@sym{✔}{2714}
 \pe@sym{✗}{2717}\pe@sym{✘}{2718}\pe@sym{⚠}{26A0}
 % 箭头
