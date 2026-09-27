@@ -1,0 +1,21 @@
+:root {
+  color-scheme: light;
+  --color-canvas: #f5f6f4; --color-surface: #ffffff; --color-subtle: #eef1ee;
+  --color-text: #202d2a; --color-muted: #596863; --color-border: #d8dfdb;
+  --color-input-border: #7b8b83; --color-brand: #166854; --color-on-brand: #ffffff;
+  --color-brand-soft: #e3f0e9; --color-warning: #795306; --color-warning-soft: #fff1cf;
+  --color-danger: #ae3036; --color-danger-soft: #ffe9eb; --color-focus: #166854;
+  --space-1: .25rem; --space-2: .5rem; --space-3: .75rem; --space-4: 1rem;
+  --space-5: 1.5rem; --space-6: 2rem; --space-7: 3rem;
+  --radius-sm: .375rem; --radius-md: .625rem; --radius-lg: 1rem;
+  --font-ui: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+  --text-sm: .8125rem; --text-base: .9375rem; --text-lg: 1.125rem; --text-title: clamp(1.7rem, 3vw, 2.2rem);
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --color-canvas: #171e1b; --color-surface: #202a25; --color-subtle: #2a3730;
+  --color-text: #edf3ef; --color-muted: #b2c1b8; --color-border: #3e5046;
+  --color-input-border: #83998c; --color-brand: #8bd5b5; --color-on-brand: #123b2d;
+  --color-brand-soft: #294639; --color-warning: #efd08b; --color-warning-soft: #493d23;
+  --color-danger: #ffb1b8; --color-danger-soft: #4a2c32; --color-focus: #8bd5b5;
+}

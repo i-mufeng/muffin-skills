@@ -1,0 +1,3 @@
+interface:
+  display_name: "Vue 界面设计与组件复用"
+  short_description: "交付可运行 Vue 设计稿、可复用组件、语义配色与真实浏览器验收"
