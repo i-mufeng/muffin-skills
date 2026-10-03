@@ -404,6 +404,32 @@ title: 单章节说明
 第二段正文。
 EOF
 
+# 行内代码 / 代码块的 CJK 字体归属。
+# 两个 fixture 刻意都「只含中文、不含任何拉丁」——这样 Maple Mono 是否被嵌入
+# 就成了二值判据：出现即说明该处 CJK 落在了等宽族上。掺一个拉丁字符，Maple
+# 就会因为要供拉丁字形而必然出现，判据立刻失效。
+md inline-code-cjk.md <<'EOF'
+---
+title: 行内代码中文
+---
+
+## 行内代码
+
+正文一句 `旧版模块目录` 结束。
+EOF
+
+md block-code-cjk.md <<'EOF'
+---
+title: 代码块中文
+---
+
+## 代码块
+
+```text
+设备一览
+```
+EOF
+
 # 目录合并顺序
 mkdir -p "$TD/book"
 for i in 1 2 10 3; do
@@ -789,6 +815,37 @@ PYEOF
     if [[ -s "$f" ]]; then ok "预设 $st 产出 docx"
     else bad "预设 $st 产出 docx" "文件为空或不存在"; fi
   done
+
+  # 代码块与行内代码的 CJK 归属 —— 与 pdf 组那两条守的是同一条边界，只是
+  # Word 侧断在样式表上：rFonts 的 ascii/hAnsi 与 eastAsia 本就分开，
+  # 不需要 PDF 侧 \DeclareTextFontCommand 那样的绕法。
+  #   SourceCode（代码块）   eastAsia=MONO —— 中文 2 倍宽，ASCII 框图才不散架
+  #   VerbatimChar（行内代码）eastAsia≠MONO —— 嵌在句子里，中文跟随正文
+  # 注意：真实 Microsoft Word 的渲染无法在 CI 里验证，soffice 预览下 eastAsia
+  # 会回退到苹方（见 references/typography.md），所以这里只断言样式表写对，
+  # 不断言渲染结果。
+  ea() {  # ea <docx> <styleId> → 该样式 rFonts 的 eastAsia 值
+    xml "$1" styles | "$PY" -c '
+import sys, re
+x = sys.stdin.read()
+m = re.search(r"w:styleId=\"" + sys.argv[1] + r"\".*?</w:style>", x, re.S)
+f = re.search(r"<w:rFonts[^/]*?w:eastAsia=\"([^\"]+)\"", m.group(0)) if m else None
+print(f.group(1) if f else "")
+' "$2"
+  }
+  if [[ -n "$PY" ]]; then
+    d="$(dx ok.md codefont --style modern)"
+    eq "Maple Mono CN" "$(ea "$d" SourceCode)" \
+       "Word 代码块的 CJK 是等宽（框图 2:1 对齐）"
+    vc="$(ea "$d" VerbatimChar)"
+    if [[ -n "$vc" && "$vc" != "Maple Mono CN" ]]; then
+      ok "Word 行内代码的 CJK 跟随正文族"
+    else
+      bad "Word 行内代码的 CJK 跟随正文族" "eastAsia=[$vc]"
+    fi
+  else
+    skip "Word 代码字体归属" "无 python3"
+  fi
 fi
 
 # ---------------------------------------------------------------- pdf
@@ -872,6 +929,29 @@ PYEOF
       --name mkpdf >/dev/null 2>&1
     eq "1" "$(grep -c colorbox "$TD/out/mkpdf.tex" 2>/dev/null)" \
        "PDF 只给带类标签着色"
+
+    # 行内代码的 CJK 必须跟随正文族，代码块的必须留在等宽族 —— 这条边界两侧
+    # 都要守。行内代码嵌在句子里，中文若落等宽，同一行会并排出现两种中文字体
+    # （曾经如此，技术文档里带中文的路径/表名一多，整页观感就是「中英文字体
+    # 不一致」）；而代码块的中文一旦离开等宽，就不再是拉丁的 2 倍宽，
+    # ASCII 框图当场错位。修前者时顺手把 \setCJKmonofont 一起改掉，
+    # 是最容易犯的过头修法，第二条断言专门拦它。
+    if command -v pdffonts >/dev/null 2>&1; then
+      "$EXPORT" "$TD/md/inline-code-cjk.md" --to pdf --no-toc \
+        --out "$TD/out" --name icjk >/dev/null 2>&1
+      "$EXPORT" "$TD/md/block-code-cjk.md" --to pdf --no-toc \
+        --out "$TD/out" --name bcjk >/dev/null 2>&1
+      eq "0" "$(pdffonts "$TD/out/icjk.pdf" 2>/dev/null | grep -c Maple)" \
+         "行内代码的 CJK 跟随正文族"
+      if [[ -n "$(fc-list 2>/dev/null | grep -i 'Maple Mono CN')" ]]; then
+        eq "1" "$(pdffonts "$TD/out/bcjk.pdf" 2>/dev/null | grep -c Maple)" \
+           "代码块的 CJK 仍在等宽族（框图 2:1 对齐）"
+      else
+        skip "代码块 CJK 等宽" "无 Maple Mono CN"
+      fi
+    else
+      skip "行内代码 / 代码块 CJK 字体归属" "无 pdffonts"
+    fi
   fi
 fi
 

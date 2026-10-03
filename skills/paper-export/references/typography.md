@@ -144,6 +144,64 @@ brief 不排封面，走「文头 + 落款」：二号黑体标题居中、三�
 标题、封面信息栏和正文会分别使用各自中文字体自带的西文字形。代码块为了保持
 中英文 2:1 等宽对齐，仍独立使用 Maple Mono CN。
 
+### 行内代码与代码块的 CJK 分家
+
+`\setCJKmonofont` 一设，行内代码（`` `x` ``）和代码块会同时落到等宽族上。
+对代码块这是必需的——中文得是拉丁的 2 倍宽，终端里画的 ASCII 框图才不散架。
+但行内代码是**嵌在正文句子里**的：技术文档里带中文的路径、表名、菜单名很常见，
+一句「来源 `` `docs/旧版模块/接口规范.docx` `` 经交叉验证」会在同一行并排出现
+两种中文字体，字形与字距都对不上。这正是「导出的中英文字体不一致」这类反馈的
+真正来源——正文的中西文其实早就统一了，花的是行内代码。
+
+所以两者分家，在 `preamble-common.tex` 里：
+
+```latex
+\DeclareTextFontCommand{\texttt}{\ttfamily\CJKfamily{\CJKrmdefault}}
+```
+
+- 行内代码：拉丁仍走等宽（`pacs_exam_order` 这类标识符的下划线与字母间距才辨得清），
+  CJK 切回正文族。
+- 代码块：走 `\ttfamily` / `Verbatim`，不经过 `\texttt`，完全不受影响，2:1 对齐照旧。
+
+`\CJKrmdefault` 是 xeCJK 给「CJK 正文族」留的族名，`\setCJKmainfont` 写的就是它，
+所以这里不硬编码任何字体名——modern 跟普惠体、report 跟宋体、brief 跟仿宋，
+各预设自动对齐各自的正文字体。
+
+用 `\DeclareTextFontCommand` 而不是 `\renewcommand`，是为了保住 `\texttt` 的
+robust 性与 `\protect` 行为。注意这跟「§8 断词」那条禁令不冲突：那条禁的是
+**往内容 token 里插 `\penalty`**（会喂坏 pandoc 生成的 `\^{}` 之类转义序列），
+这里只在内容之前切字体族，不碰内容。
+
+两侧各有一条断言守着（`test.sh` 的 `pdf` 组）。fixture 刻意只含中文、不含任何
+拉丁字符——这样「Maple 是否被嵌入 PDF」就是个二值判据；掺一个拉丁字符，
+Maple 会因为要供拉丁字形而必然出现，判据立刻失效。修行内代码时顺手把
+`\setCJKmonofont` 一起改掉是最容易犯的过头修法，第二条断言专门拦它。
+
+#### Word 侧同一条边界
+
+OOXML 的 `w:rFonts` 本来就把 `ascii`/`hAnsi`/`cs` 与 `eastAsia` 分开，不需要
+LaTeX 那样的绕法，直接在 `build-reference-docx.py` 里分别指定：
+
+| 样式 | ascii / hAnsi | eastAsia | 用途 |
+|---|---|---|---|
+| `SourceCode` | Maple Mono CN | Maple Mono CN | 代码块，中文 2 倍宽 |
+| `VerbatimChar` | Maple Mono CN | 正文中文字体 | 行内代码，中文跟随正文 |
+
+`SourceCode` 的 `eastAsia` 曾经也是正文字体，理由写的是「Word 里字体缺失会静默
+回退，CJK 侧给正文字体兜底」。这个权衡不成立，已推翻：`ascii`/`hAnsi` 本来就
+指着 Maple，没装字体时拉丁一回退、宽度就变，框图照样错——CJK 侧兜底救不回
+框图，却让**装了字体的机器也必错**。何况 `doctor.sh` 会把缺字体直接报出来。
+
+改完必须 `python3 scripts/build-reference-docx.py all` 重新生成四个母版，
+`.docx` 是二进制产物，不会随脚本自动更新。
+
+> **soffice 预览在这一项上不可信。** LibreOffice 无头渲染时不认 `eastAsia` 指定的
+> Maple Mono CN，会回退到苹方 / Arial Unicode MS（可用 `pdffonts` 在渲染产物里
+> 看到），于是中文与拉丁不再是 2:1，框图看着是错位的。**这不代表 Microsoft Word
+> 的实际表现**——真实 Word 的渲染无法在无头环境验证，所以 `test.sh` 的 docx 组
+> 只断言样式表写对，不断言渲染结果。同类已知偏差还有「Word 目录是域，soffice
+> 预览时目录页是空的」。
+
 手动装的那几个：把 `.otf`/`.ttf` 拷进 `~/Library/Fonts/`，再 `fc-cache -f`。
 全部缺失时都有回退（普惠体→宋体、思源宋体→宋体伪粗、Maple→Menlo+宋体），
 只是观感降一档，不会编译失败。`scripts/doctor.sh` 会逐个列出在位情况。

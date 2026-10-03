@@ -115,6 +115,27 @@
   {\setmonofont{Menlo}[Scale=0.85]
    \setCJKmonofont{Songti SC}[Scale=1.02]}
 
+% ---------- 3b. 行内代码里的 CJK 跟随正文 ----------
+% 上面的 \setCJKmonofont 同时作用于代码块与行内代码（\texttt）。对代码块这是
+% 对的 —— 中文必须与拉丁保持 2:1 才能让 ASCII 框图对齐。但行内代码是嵌在正文
+% 句子里的：一句「来源 `docs/旧版pacs 模块/接口规范.docx` 经交叉验证」会在同一
+% 行里并排出现两种中文字体（等宽 vs 正文），字形与字距都对不上。技术文档里带
+% 中文的路径、表名、菜单名很常见，整页看下来就是「中英文字体不一致」的观感。
+%
+% 只把 \texttt 内的 CJK 切回正文族：拉丁仍走等宽（保住 pacs_exam_order 这类
+% 标识符的辨识度与下划线可读性），中文与正文一致。代码块走 \ttfamily /
+% Verbatim，不经过 \texttt，因此完全不受影响，框图的 2:1 对齐照旧。
+%
+% 用 \DeclareTextFontCommand 而不是 \renewcommand：前者是 LaTeX 声明文本字体
+% 命令的正规入口，保留 \texttt 的 robust 性与 \protect 行为。这里只在内容之前
+% 切字体族，不碰内容 token —— 与 §8 注释里「往内容里插 \penalty 会喂坏 pandoc
+% 生成的转义序列」那个坑不是一回事，那条禁令依然有效。
+%
+% \CJKrmdefault 是 xeCJK 为「CJK 正文族」保留的族名，\setCJKmainfont 写的就是
+% 它。因此这里不硬编码任何字体名，modern 覆盖成普惠体、report 保持宋体、
+% brief 用仿宋，各预设都会自动跟随各自的正文字体。
+\DeclareTextFontCommand{\texttt}{\ttfamily\CJKfamily{\CJKrmdefault}}
+
 \usepackage{fvextra}
 \fvset{breaklines=true,breakanywhere=true,fontsize=\zihao{5}}
 

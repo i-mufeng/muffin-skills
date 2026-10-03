@@ -41,8 +41,17 @@ PH_BOLD = "Alibaba PuHuiTi 3.0 85 Bold"
 # 唯一例外是显式传入 MONO 的代码块。
 SANS_LATIN = "Arial"
 LATIN = "Times New Roman"
-# 代码块等宽：Maple Mono CN 中英同源、中文恰好 2 倍宽，与 PDF 侧一致；
-# Word 里字体缺失会静默回退，所以 CJK 侧仍单独给正文字体兜底。
+# 代码块等宽：Maple Mono CN 中英同源、中文恰好 2 倍宽，与 PDF 侧一致。
+#
+# 这里曾把代码块的 CJK 侧单独设成正文字体「兜底」，理由是 Word 里字体缺失会
+# 静默回退。该权衡不成立，已推翻：ascii/hAnsi 本来就指着 MONO，没装 Maple 时
+# 拉丁一回退、宽度就变，框图照样错——CJK 侧兜底救不回框图，却让**装了字体的
+# 机器也必错**（中文按比例字体排，与拉丁不再是 2:1）。拿「装了也错」换「没装
+# 时中文好看一点」是亏的，何况 doctor.sh 会把缺字体直接报出来。
+#
+# 现在两处分工与 PDF 侧完全对齐：
+#   SourceCode（代码块）   cn=MONO      —— 中文 2 倍宽，框图对齐
+#   VerbatimChar（行内代码）cn=body_cn  —— 中文跟随正文，不在句子里混第二种中文
 MONO = "Maple Mono CN"
 
 BLACK = "000000"
@@ -417,10 +426,14 @@ def build_styles(preset: str) -> dict:
        rpr(cn=body_cn, latin=latin, sz=SZ_XSI))
 
     # ---- 代码 ----
+    # 代码块：中英都走 MONO，中文恰好 2 倍宽，ASCII 框图才不散架（同 PDF 侧的
+    # \setCJKmonofont）。行内代码：拉丁走 MONO 保住标识符辨识度，中文跟随正文——
+    # 它嵌在句子里，中文若也等宽，同一行会并排出现两种中文字体。两者刻意不同，
+    # 别顺手改成一致。
     st("SourceCode",
        ppr(align="left", line=TIGHT_LINE, before=60, after=60, first=0,
            left=120, shd=CODE_BG),
-       rpr(cn=body_cn, latin=MONO, sz=SZ_WU))
+       rpr(cn=MONO, latin=MONO, sz=SZ_WU))
     st("VerbatimChar", "", rpr(cn=body_cn, latin=MONO, sz=SZ_WU, shd=CODE_BG))
 
     # ---- 引用块：左竖条 + 浅灰底 + 不缩进 ----

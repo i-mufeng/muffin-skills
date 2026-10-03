@@ -7,6 +7,7 @@
 ```
 skills/
   paper-export/     Markdown → PDF / Word 规范级排版（Pandoc + XeLaTeX/Tectonic）
+  frontend-ui-design/ 前端界面设计、实现与质量验收
 ```
 
 每个 skill 一个目录，内含 `SKILL.md`（skill 入口，Claude 读它决定怎么用）
@@ -19,6 +20,7 @@ Claude Code 从 `~/.claude/skills/<name>/` 加载全局 skill。用软链接指�
 
 ```bash
 ln -sfn "$PWD/skills/paper-export" ~/.claude/skills/paper-export
+ln -sfn "$PWD/skills/frontend-ui-design" ~/.claude/skills/frontend-ui-design
 ```
 
 已经有实体目录时先备份再换：
@@ -42,6 +44,14 @@ skills/paper-export/scripts/test.sh                # 回归测试（108 条断�
 ```
 
 详见 [skills/paper-export/SKILL.md](skills/paper-export/SKILL.md)。
+
+### frontend-ui-design
+
+用于设计、实现或审查 Web 与移动端前端界面。覆盖信息层级、配色、字体、
+卡片与留白、按钮和图标、响应式、交互状态、无障碍、性能及浏览器验收。
+参考图中的 35 条 UI 优化技巧已整理为带适用边界的设计原则。
+
+详见 [skills/frontend-ui-design/SKILL.md](skills/frontend-ui-design/SKILL.md)。
 
 ## 约定
 
