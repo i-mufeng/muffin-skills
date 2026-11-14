@@ -9,5 +9,6 @@ __pycache__/
 *.pdf
 *.tex
 !skills/paper-export/assets/*.tex
+!skills/paper-export/legacy/assets/*.tex
 tmp/
 out/

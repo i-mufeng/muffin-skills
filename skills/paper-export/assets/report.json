@@ -1,0 +1,52 @@
+{
+  "name": "paper-report",
+  "version": 1,
+  "kind": "docs",
+  "constraints": "open",
+  "fonts": {
+    "bodyZh": "宋体",
+    "bodyLatin": "Times New Roman",
+    "headingZh": "黑体",
+    "headingLatin": "Times New Roman",
+    "mono": "Consolas"
+  },
+  "colors": {
+    "dk1": "000000", "lt1": "FFFFFF", "dk2": "000000", "lt2": "FFFFFF",
+    "accent1": "000000", "accent2": "000000", "accent3": "000000",
+    "accent4": "000000", "accent5": "000000", "accent6": "000000",
+    "hlink": "000000", "folHlink": "000000"
+  },
+  "styles": {
+    "Body": {
+      "run": {"font": {"kind": "theme", "value": "body"}, "size": 1200, "color": {"kind": "rgb", "value": "000000"}},
+      "para": {"align": "justify", "indent": {"firstLine": 304800, "firstLineChars": 200}, "spacing": {"line": {"kind": "multiple", "value": 1500}}, "widowControl": true}
+    },
+    "Heading1": {
+      "run": {"font": {"kind": "theme", "value": "heading"}, "size": 1800, "color": {"kind": "rgb", "value": "000000"}},
+      "para": {"align": "center", "keepWithNext": true, "spacing": {"before": 152400, "after": 152400}}
+    },
+    "Heading2": {
+      "run": {"font": {"kind": "theme", "value": "heading"}, "size": 1500, "color": {"kind": "rgb", "value": "000000"}},
+      "para": {"keepWithNext": true, "spacing": {"before": 152400, "after": 76200}}
+    },
+    "Heading3": {
+      "run": {"font": {"kind": "theme", "value": "heading"}, "size": 1200, "color": {"kind": "rgb", "value": "000000"}},
+      "para": {"keepWithNext": true, "spacing": {"before": 101600, "after": 50800}}
+    },
+    "Heading4": {"run": {"font": {"kind": "theme", "value": "heading"}, "size": 1200}, "para": {"keepWithNext": true}},
+    "Heading5": {"run": {"font": {"kind": "theme", "value": "heading"}, "size": 1200}, "para": {"keepWithNext": true}},
+    "Heading6": {"run": {"font": {"kind": "theme", "value": "heading"}, "size": 1200}, "para": {"keepWithNext": true}},
+    "Caption": {"run": {"font": {"kind": "theme", "value": "body"}, "size": 1050}, "para": {"align": "center", "spacing": {"after": 76200}}},
+    "PageFooter": {"run": {"font": {"kind": "theme", "value": "body"}, "size": 900}, "para": {"align": "center"}}
+  },
+  "docs": {
+    "bodyStyle": "Body",
+    "headingStyles": ["Heading1", "Heading2", "Heading3", "Heading4", "Heading5", "Heading6"],
+    "page": {
+      "size": {"width": 7560000, "height": 10692000},
+      "orientation": "portrait",
+      "margins": {"top": 914400, "bottom": 914400, "left": 1080000, "right": 914400, "header": 540000, "footer": 630000}
+    },
+    "footer": [{"type": "paragraph", "id": "report-page-footer", "props": {"style": "PageFooter"}, "inlines": [{"type": "field", "kind": "page_number"}]}]
+  }
+}

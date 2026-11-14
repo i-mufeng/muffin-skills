@@ -1,270 +1,28 @@
-# 排版规范实现细节
+# 按参考模板落实排版
 
-本文件记录 paper-export **产出成品长什么样**，以及这些效果落在哪个文件里。
-写 Markdown 时要遵守的约定不在这里，在 `SKILL.md` —— 那些是每次写文档都
-用得上的，所以刻意留在主文件里。这里的内容只在两种时候需要：核对产出是否
-合规、或者要改版式。
+先提取用户模板的实际规则，再制作主题与模型。不要把通用主题称为学校模板、国标模板，也不要把用户某一次的格式推广成全部文档的规则。
 
----
+## 通用主题
 
-## 1. 版面
+`assets/report.json` 是独立编写的起点：A4，边距上/下/右 2.54cm、左 3cm；正文宋体小四 12pt，西文 Times New Roman，1.5 倍行距，首行两字；黑体标题与黑色正文，居中 PAGE 页脚。没有自动封面和目录，不声称满足具体论文规范。标题层级直接对应 Markdown H1/H2/H3，不沿用旧版 H1 去重和层级偏移。
 
-A4，上下边距 2.54cm，右边距 2.54cm，左边距 3.0cm（gb 为 3.17cm，留装订线）。
-页眉距边界 1.5cm，页脚距边界约 1.75cm。
+主题的字号单位为 1/100 pt，长度为 EMU（1cm = 360000；1pt = 12700）。`fonts` 分开指定中文与西文；不把 Times New Roman 字体名写在宋体文件上。需要实际字重时同时准备合法的相应字体文件。引擎可能明确报告同族合成样式，应保留该信息，用户要求真实字重时必须补齐真实文件。
 
-brief 走公文版心：上 37mm / 下 35mm / 左 28mm / 右 26mm。
+## 用模型表达精确要求
 
-## 2. 字号与字体（report 预设）
+以当前引擎 `schema` 为准，尤其是 `styles`、`docs.page`、`ParaProps`、`TableProps`、`CellProps` 和分节结构；不要猜属性名或用未经验证的私有模板。
 
-| 元素 | 字号 | 字体 |
-|---|---|---|
-| 封面主标题 | 一号 26pt | 黑体 |
-| 封面副标题 | 三号 16pt | 黑体 |
-| 封面信息栏 | 小三 15pt | 楷体 |
-| 目录标题「目　录」/ H1 | 三号 16pt 居中 | 黑体 |
-| H2（规范一级标题） | 小三 15pt | 黑体 |
-| H3 | 13pt | 黑体 |
-| H4 | 小四 12pt | 黑体 |
-| H5 | 小四 12pt 加粗 | 宋体 |
-| 正文 | 小四 12pt，行距 1.5，首行缩进 2 字符 | 宋体 |
-| 表格 / 题注 | 五号 10.5pt，行距 1.0 | 宋体（表头黑体加粗） |
-| 页眉页脚 | 小五 9pt | 宋体 |
+- 三线表：在表级/单元格级设置黑色顶线、底线及表头下线，关闭竖线；设置实际列宽、重复表头及合适的字号。长表需检查跨页，不能靠缩小到难读字号消除溢出。
+- 图题和表题：使用独立段落或模型 caption，按模板确定位置、字号与间距；图题、表题与正文静态引用一致。导出后检查题注是否被分到下一页。
+- 参考文献：核对真实标题、作者、年份和来源。按用户指定格式静态排写条目与引用，不暗示已自动执行 CSL 或国标文献校验。
+- 封面、目录、分节页码、公式和脚注等仅在当前引擎实际支持且验证通过时使用。拒绝的内容回到原始模型修正，不经外部软件修补。
 
-gb 预设：章 三号黑体居中、节 四号黑体、条/款 小四黑体，正文同上。
+## 图像与验收
 
-字号刻意逐级拉开。ctex 在 macOS 上默认把 `\heiti` 落到 STXihei（华文细黑），
-笔画细、字面小，会让三号标题看起来比正文还弱 —— 已显式改绑 `Heiti SC Medium`。
+含中文标签的复杂 SVG 保留源图，成册引用清晰 PNG；检查实际字体、最长标签、连线、留白与裁剪边界。图表内容要服务论点，不额外添加说明用户要求已被遵守的自证标签。
 
-**modern 与 report 只差字体**：版面、标题层级、页眉页脚、目录全部复用
-`preamble-report.tex` 与 `reference-report` 那一套逻辑，`preamble-modern.tex`
-只在其后覆盖字体族。改版面改 report 即可，两套同步生效。
+验收对象是最终成品：逐页看 PDF 的页面渲染，核对缺字、字体记录、表格、图题、分页、页码与文献。PDF 与 DOCX 来自同一原生链路仍不能推断真实 Word 的显示已验证。
 
-**为什么 modern/report 的标题要偏移一档**：技术文档里 H1 通常是文档名（会被
-摘到封面），作者写的「## 一、概述」才是规范意义上的一级标题。brief 沿用同一套
-偏移，gb 预设不做这个偏移。
+## 字体取得
 
-## 3. 颜色实现
-
-一切文字纯黑：标题、正文、目录（含条目与页码）、页眉页脚、题注、表格、代码、
-列表符号。超链接默认也是黑色（打印友好），`--links color` 才转深蓝。
-代码块默认单色高亮，`--code-color` 才启用彩色。
-
-允许的非黑仅三处：
-
-| 位置 | 色值 |
-|---|---|
-| 代码块底色 | `F7F7F8` |
-| 引用块左侧竖条 | `BFBFBF` |
-| 表格行间分界线 | `D0D0D0` |
-
-图片本身不受限。语义标签的配色见 SKILL.md 的标签表 —— 那张表写 Markdown 时
-就要用，所以留在主文件。
-
-## 4. 表格视觉
-
-- **三线表**：顶线/底线 0.9pt 纯黑，表头下线 0.4pt 纯黑，**无竖线**。
-- **行间分界线按内容密度自动加**（`--table-rule auto`，默认）：
-  任一单元格会折行 → 行间加 0.3pt `D0D0D0` 浅灰细线；全是短词 → 保持纯三线表。
-  分界线刻意比结构线细得多、浅得多，否则整张表退化成网格反而更吵。
-  `--table-rule three` 强制纯三线表，`grid` 强制全部加线。
-- 表格水平居中，宽度撑满版心；表头黑体加粗居中；跨页自动重复表头。
-- **列宽按内容重算**，不用 Markdown 分隔行的长度（那会把长文本列挤成四行、
-  短列留一大片白）。纯数字列右对齐，最宽不超过 8 个显示宽度的窄列居中。
-- 列宽按「CJK=2 / 西文=1」估算，不是真实字体度量，比例可靠、绝对值有偏差。
-  这份显示宽度表在 `assets/tablefit.lua` 与 `scripts/md-lint.py` 里各有一份，
-  **必须保持一致** —— 不一致会导致 lint 说没超宽而实际排出来溢出。
-  已按 `cp ∈ [0, 0x40000]` 逐码位比对确认零差异；改一处务必同步改另一处。
-- **带合并单元格（`row_span` / `col_span`）的行不加行间分界线。** `\noalign`
-  只在「刚结束一行」的位置合法：跨行单元格会让本行第一个格落到第 2 列（前面
-  多个 `&`），跨列单元格会被 pandoc 包进 `\multicolumn{n}{...}{...}` —— 两种
-  情况插进去 XeTeX 都报 `! Misplaced \noalign` 并中止，**PDF 一页都出不来**。
-  所以这些行一律跳过，宁可少一条辅助线。
-- 量宽时会把 `sanitize.lua` 在 LaTeX 侧生成的 `RawInline('tex', '\texttt{…}')`
-  还原成文字。`pandoc.utils.stringify(RawInline)` 返回**空串**，不还原的话含
-  行内代码的单元格算作 0 宽，PDF 列宽与 Word 完全分叉。
-
-## 5. 列表
-
-无序 `•` / `–` / `·`，有序 `1.` / `(1)` / `①`。左缩进与正文首行对齐，
-项间紧凑，列表内不再首行缩进。
-
-## 6. 页眉页脚与页码分节
-
-文档分三节，页码独立：
-
-| 节 | 页眉 | 页脚 | 页码 |
-|---|---|---|---|
-| 封面 | 无 | 无 | 不计数、不显示 |
-| 前置（目录） | 横线 + 文档标题**居中** | 居中 | 大写罗马 I、II |
-| 正文 | 横线 + 左文档标题 + 右当前一级标题 | 居中 | 阿拉伯，**从 1 重新开始** |
-
-`--footer-total` 可把页脚换成「第 N 页 共 M 页」。PDF 与 Word 两侧一致。
-
-页眉右侧取哪一级标题跟随分页级别：按 H2 分页时取 H2，否则取 H1；gb 恒为章。
-
-brief 没有页眉、页脚、页码，单节。
-
-## 7. 封面
-
-从上到下：顶部留白（≥15% 页高，主标题绝不贴顶）→ 单位名 → 主标题（一号黑体）
-→ 副标题 → 分隔线 → 信息栏（文档编号/版本号/密级/编制人，标签两端对齐并相对
-中线略向左）→ 弹性留白 → **日期（页面下部约 85% 处）** → 底部留白。
-
-未提供的字段整行省略，不留空行。封面标题默认取第一个 H1，此时正文里那个 H1
-会被自动摘掉，避免封面、正文、目录三处重复。
-
-brief 不排封面，走「文头 + 落款」：二号黑体标题居中、三号楷体副标题、
-1.2pt + 0.4pt 双分隔线；文末右下角落款（单位 / 编制人 / 中文日期），距右 4 字宽。
-
-## 8. 分页
-
-- 封面独占一页，目录独占。
-- **长文档的一级标题之间必然换页**。`--break-level auto`（默认）会自己判断：
-  正文里 H1 有两个以上 → 按 H1 分页；只有一个 H1（被当作文档名摘到封面了）
-  → **按 H2 分页**。`--break-level 0` 关闭，`1|2|3` 指定级别。
-- 标题后至少留 4 行正文，杜绝标题孤零零挂在页面末行；标题紧跟表格时，
-  标题与表头保证同页。
-- 段落孤行寡行全部抑制；表格跨页重复表头。
-- gb 的 `\chapter` 自带分页，`--break-level` 恒为 0。
-
----
-
-## 字体来源与安装
-
-| 用途 | 字体 | 来源 |
-|---|---|---|
-| modern 正文 / 标题 / 四级标题 | 阿里巴巴普惠体 3.0 的 55 / 85 / 65 | 免费商用，需手动装 |
-| report、gb 正文 | Songti SC | macOS 自带 |
-| report、gb 标题 | Heiti SC Medium | macOS 自带 |
-| brief 正文 | Noto Serif CJK SC Regular（回退普惠体/仿宋） | 免费商用，独立 OTF 可嵌入 PDF |
-| brief 文头大标题 | Noto Serif CJK SC Black | `brew install --cask font-noto-serif-cjk-sc` |
-| 代码块 / ASCII 框图 | Maple Mono CN | 免费开源，需手动装 |
-
-普通文本里的英文与数字跟随当前中文字体，不再单独切换 Arial 或 Times New Roman；
-标题、封面信息栏和正文会分别使用各自中文字体自带的西文字形。代码块为了保持
-中英文 2:1 等宽对齐，仍独立使用 Maple Mono CN。
-
-### 行内代码与代码块的 CJK 分家
-
-`\setCJKmonofont` 一设，行内代码（`` `x` ``）和代码块会同时落到等宽族上。
-对代码块这是必需的——中文得是拉丁的 2 倍宽，终端里画的 ASCII 框图才不散架。
-但行内代码是**嵌在正文句子里**的：技术文档里带中文的路径、表名、菜单名很常见，
-一句「来源 `` `docs/旧版模块/接口规范.docx` `` 经交叉验证」会在同一行并排出现
-两种中文字体，字形与字距都对不上。这正是「导出的中英文字体不一致」这类反馈的
-真正来源——正文的中西文其实早就统一了，花的是行内代码。
-
-所以两者分家，在 `preamble-common.tex` 里：
-
-```latex
-\DeclareTextFontCommand{\texttt}{\ttfamily\CJKfamily{\CJKrmdefault}}
-```
-
-- 行内代码：拉丁仍走等宽（`pacs_exam_order` 这类标识符的下划线与字母间距才辨得清），
-  CJK 切回正文族。
-- 代码块：走 `\ttfamily` / `Verbatim`，不经过 `\texttt`，完全不受影响，2:1 对齐照旧。
-
-`\CJKrmdefault` 是 xeCJK 给「CJK 正文族」留的族名，`\setCJKmainfont` 写的就是它，
-所以这里不硬编码任何字体名——modern 跟普惠体、report 跟宋体、brief 跟仿宋，
-各预设自动对齐各自的正文字体。
-
-用 `\DeclareTextFontCommand` 而不是 `\renewcommand`，是为了保住 `\texttt` 的
-robust 性与 `\protect` 行为。注意这跟「§8 断词」那条禁令不冲突：那条禁的是
-**往内容 token 里插 `\penalty`**（会喂坏 pandoc 生成的 `\^{}` 之类转义序列），
-这里只在内容之前切字体族，不碰内容。
-
-两侧各有一条断言守着（`test.sh` 的 `pdf` 组）。fixture 刻意只含中文、不含任何
-拉丁字符——这样「Maple 是否被嵌入 PDF」就是个二值判据；掺一个拉丁字符，
-Maple 会因为要供拉丁字形而必然出现，判据立刻失效。修行内代码时顺手把
-`\setCJKmonofont` 一起改掉是最容易犯的过头修法，第二条断言专门拦它。
-
-#### Word 侧同一条边界
-
-OOXML 的 `w:rFonts` 本来就把 `ascii`/`hAnsi`/`cs` 与 `eastAsia` 分开，不需要
-LaTeX 那样的绕法，直接在 `build-reference-docx.py` 里分别指定：
-
-| 样式 | ascii / hAnsi | eastAsia | 用途 |
-|---|---|---|---|
-| `SourceCode` | Maple Mono CN | Maple Mono CN | 代码块，中文 2 倍宽 |
-| `VerbatimChar` | Maple Mono CN | 正文中文字体 | 行内代码，中文跟随正文 |
-
-`SourceCode` 的 `eastAsia` 曾经也是正文字体，理由写的是「Word 里字体缺失会静默
-回退，CJK 侧给正文字体兜底」。这个权衡不成立，已推翻：`ascii`/`hAnsi` 本来就
-指着 Maple，没装字体时拉丁一回退、宽度就变，框图照样错——CJK 侧兜底救不回
-框图，却让**装了字体的机器也必错**。何况 `doctor.sh` 会把缺字体直接报出来。
-
-改完必须 `python3 scripts/build-reference-docx.py all` 重新生成四个母版，
-`.docx` 是二进制产物，不会随脚本自动更新。
-
-> **soffice 预览在这一项上不可信。** LibreOffice 无头渲染时不认 `eastAsia` 指定的
-> Maple Mono CN，会回退到苹方 / Arial Unicode MS（可用 `pdffonts` 在渲染产物里
-> 看到），于是中文与拉丁不再是 2:1，框图看着是错位的。**这不代表 Microsoft Word
-> 的实际表现**——真实 Word 的渲染无法在无头环境验证，所以 `test.sh` 的 docx 组
-> 只断言样式表写对，不断言渲染结果。同类已知偏差还有「Word 目录是域，soffice
-> 预览时目录页是空的」。
-
-手动装的那几个：把 `.otf`/`.ttf` 拷进 `~/Library/Fonts/`，再 `fc-cache -f`。
-全部缺失时都有回退（普惠体→宋体、思源宋体→宋体伪粗、Maple→Menlo+宋体），
-只是观感降一档，不会编译失败。`scripts/doctor.sh` 会逐个列出在位情况。
-
-### 在 preamble 里写字体名的两个坑
-
-都表现为「编译不报错但排出豆腐块」：
-
-1. **多字重字体必须用 PostScript 名**。`AlibabaPuHuiTi_3_55_Regular` 可以，
-   fontconfig 显示的家族名 `Alibaba PuHuiTi 3.0 55 Regular` 不行 ——
-   tectonic 的字体索引按家族名查不到，会报 font cannot be found。
-2. **字体集合（.ttc）里的非首 face 取不到**。macOS 的 Songti SC 确实带
-   Black 字重，但它藏在 `Songti.ttc` 里，三种写法（family+BoldFont、全名、
-   PostScript 名）实测全部落空 —— 这就是 brief 文头改用思源宋体的原因。
-   对比 `Heiti SC Medium` 能用，因为它是独立的 `.ttf`。
-
-Word 侧相反：`rFonts` 要写 **name ID 1**，也就是带字重后缀的
-`Alibaba PuHuiTi 3.0 85 Bold`；只写 `Alibaba PuHuiTi 3.0` 会落到 Regular，
-Bold 变成 Word 自己描边的伪粗。
-
----
-
-## 文件职责
-
-```
-assets/
-  preamble-common.tex    字体、符号兜底、表格、列表、代码块、分页质量
-  preamble-report.tex    技术报告版式：页面、标题层级、页眉页脚、目录
-  preamble-modern.tex    modern 的字体覆盖层（叠在 report 之上，版式不动）
-  preamble-modern-plain.tex modern-plain 的无封面行内标题层
-  preamble-gb.tex        学位论文版式
-  preamble-brief.tex     简报版式：公文版心、仿宋三号、无页眉页脚
-  titlepage.tex          封面（PDF 侧）
-  masthead-brief.tex     简报文头：标题 + 副标题 + 双分隔线（PDF 侧）
-  signoff-brief.tex      简报落款：单位 / 编制人 / 日期（PDF 侧）
-  before-body.tex        封面节 → 前置节的切换
-  sanitize.lua           Unicode 清洗 + 行内代码断行
-  semantic-markers.lua   待确认 / 需补充 / 建议方案语义标签（PDF 着色）
-  title-dedup.lua        正文里与封面重名的首个 H1 摘除
-  tablefit.lua           表格列宽重算 + 表头加粗 + 行间分界线
-  pagebreak.lua          按级别分页
-  cover-docx.lua         封面 / brief 文头与落款（Word 侧，直接写 OpenXML）
-  crossref-*.yaml        图表编号格式
-  reference-*.docx       Word 母版（由 scripts/build-reference-docx.py 生成）
-scripts/
-  export.sh              导出入口
-  doctor.sh              依赖与字体自检
-  test.sh                回归测试（改这里任何文件之前先跑一遍留基线）
-  md-lint.py             Markdown 体检
-  build-reference-docx.py 重新生成 Word 母版（改版式后需重跑）
-  docx-postprocess.py    Word 分节、页眉页脚、页码、表格线型、语义标签着色
-references/
-  frontmatter.md         元数据字段与优先级
-  typography.md          本文件：排版规范实现细节
-  troubleshooting.md     报错对照表与机理
-```
-
-lua filter 的调用顺序在 `scripts/export.sh` 的 `COMMON` 数组与
-`build_pdf` / `build_docx` 里：sanitize → title-dedup → pagebreak →
-semantic-markers → tablefit，Word 侧末尾再追加 cover-docx。
-顺序有依赖，改之前先看那两处的注释。
-
-PDF 侧 preamble 的注入顺序同样有依赖：cover-vars（`\def` 落定字段值）→
-preamble-common（颜色与 `\pecircled`）→ preamble-`<style>`（版式）→
-preamble-modern（仅 modern，字体覆盖，必须在 report 之后）→
-titlepage（用前面全部组装封面）。
+先检查本机合法安装与字体实际内部名称。缺失时主动寻找发布方、官方字体仓库或明确授权的分发渠道，核对使用与嵌入许可；找到后下载真实原件并传入字体目录。专有字体无法合法取得时，说明缺失并请求用户提供合法来源；只有用户接受改用其他字体时才调整主题。脚本不会盲目安装字体。公开仓库只保留主题与操作说明，不含字体、私有引擎或用户稿件。
